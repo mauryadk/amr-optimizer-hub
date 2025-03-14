@@ -7,13 +7,16 @@ import {
   Power, 
   RefreshCw,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  StopCircle,
+  Zap
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { Progress } from '@/components/ui/progress';
 import { Robot } from '@/utils/mockData';
+import { useVDA5050 } from '@/hooks/use-vda5050';
 
 interface RobotControlsProps {
   robot: Robot;
@@ -22,25 +25,53 @@ interface RobotControlsProps {
 export default function RobotControls({ robot }: RobotControlsProps) {
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState<string | null>(null);
+  const { pauseRobot, resumeRobot, emergencyStop } = useVDA5050();
 
-  // Simulate robot control actions
+  // Control robot using VDA5050
   const controlRobot = (action: string) => {
     setLoading(action);
     
-    // This would be replaced with actual API calls
+    // Simulate API call delay
     setTimeout(() => {
       setLoading(null);
-      toast({
-        title: `Robot ${action} command sent`,
-        description: `Command to ${action} ${robot.name} has been processed`,
-      });
-    }, 1500);
+      
+      try {
+        // Convert robot ID to VDA5050 format (manufacturer_serialNumber)
+        const vdaRobotId = `amr_${robot.id}`;
+        
+        switch (action) {
+          case 'pause':
+            pauseRobot(vdaRobotId);
+            break;
+          case 'resume':
+            resumeRobot(vdaRobotId);
+            break;
+          case 'emergency_stop':
+            emergencyStop(vdaRobotId);
+            break;
+          default:
+            break;
+        }
+        
+        toast({
+          title: `Robot ${action} command sent`,
+          description: `Command to ${action} ${robot.name} has been processed`,
+        });
+      } catch (error) {
+        console.error(`Error sending ${action} command:`, error);
+        toast({
+          title: `Command failed`,
+          description: `Failed to send ${action} command to ${robot.name}`,
+          variant: "destructive"
+        });
+      }
+    }, 1000);
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all">
       <div 
-        className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 transition-colors"
+        className="p-4 flex items-center justify-between cursor-pointer bg-gradient-to-r from-gray-50 to-white hover:from-gray-100 hover:to-gray-50 transition-colors"
         onClick={() => setExpanded(!expanded)}
       >
         <h3 className="font-medium flex items-center">
@@ -63,7 +94,10 @@ export default function RobotControls({ robot }: RobotControlsProps) {
           >
             <div className="mb-4">
               <div className="flex justify-between items-center mb-1">
-                <span className="text-sm text-gray-500">Battery</span>
+                <span className="text-sm text-gray-500 flex items-center">
+                  <Zap size={14} className="mr-1 text-yellow-500" />
+                  Battery
+                </span>
                 <span className="text-sm font-medium">{robot.batteryLevel}%</span>
               </div>
               <Progress 
@@ -100,7 +134,7 @@ export default function RobotControls({ robot }: RobotControlsProps) {
                 <button 
                   onClick={() => controlRobot('pause')}
                   disabled={loading !== null}
-                  className="flex items-center justify-center px-4 py-2 rounded-md bg-yellow-500 text-white hover:bg-yellow-600 transition-colors disabled:opacity-50"
+                  className="flex items-center justify-center px-4 py-2 rounded-md bg-gradient-to-r from-yellow-400 to-yellow-500 text-white hover:from-yellow-500 hover:to-yellow-600 transition-colors disabled:opacity-50 shadow-sm"
                 >
                   {loading === 'pause' ? (
                     <RefreshCw size={16} className="mr-2 animate-spin" />
@@ -113,7 +147,7 @@ export default function RobotControls({ robot }: RobotControlsProps) {
                 <button 
                   onClick={() => controlRobot('resume')}
                   disabled={loading !== null || robot.status === 'error' || robot.status === 'maintenance'}
-                  className="flex items-center justify-center px-4 py-2 rounded-md bg-green-500 text-white hover:bg-green-600 transition-colors disabled:opacity-50"
+                  className="flex items-center justify-center px-4 py-2 rounded-md bg-gradient-to-r from-green-400 to-green-500 text-white hover:from-green-500 hover:to-green-600 transition-colors disabled:opacity-50 shadow-sm"
                 >
                   {loading === 'resume' ? (
                     <RefreshCw size={16} className="mr-2 animate-spin" />
@@ -127,12 +161,12 @@ export default function RobotControls({ robot }: RobotControlsProps) {
               <button 
                 onClick={() => controlRobot('emergency_stop')}
                 disabled={loading !== null}
-                className="flex items-center justify-center px-4 py-2 rounded-md bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-50"
+                className="flex items-center justify-center px-4 py-2 rounded-md bg-gradient-to-r from-red-400 to-red-500 text-white hover:from-red-500 hover:to-red-600 transition-colors disabled:opacity-50 shadow-sm"
               >
                 {loading === 'emergency_stop' ? (
                   <RefreshCw size={16} className="mr-2 animate-spin" />
                 ) : (
-                  <AlertTriangle size={16} className="mr-2" />
+                  <StopCircle size={16} className="mr-2" />
                 )}
                 E-Stop
               </button>
