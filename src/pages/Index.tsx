@@ -5,6 +5,7 @@ import Sidebar from '@/components/layout/Sidebar';
 import StatusCard from '@/components/dashboard/StatusCard';
 import FleetOverview from '@/components/dashboard/FleetOverview';
 import RobotCard from '@/components/robot/RobotCard';
+import DatabaseStatus from '@/components/settings/DatabaseStatus';
 import { 
   robots, 
   tasks, 
@@ -85,9 +86,9 @@ export default function Index() {
           
           {/* Main Content */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mt-8">
-            {/* Fleet Status Chart */}
+            {/* Database Status */}
             <div className="lg:col-span-1">
-              <FleetOverview robots={robots} />
+              <DatabaseStatus />
             </div>
             
             {/* Recent Alerts */}
@@ -168,6 +169,11 @@ export default function Index() {
                 </div>
               </div>
             </motion.div>
+          </div>
+          
+          {/* Fleet Overview Chart */}
+          <div className="mt-8">
+            <FleetOverview robots={robots} />
           </div>
           
           {/* Quick View Robots */}

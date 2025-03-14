@@ -16,6 +16,8 @@ import {
   Play,
   RefreshCw
 } from 'lucide-react';
+import RobotControls from './RobotControls';
+import HardwareStatus from './HardwareStatus';
 
 interface RobotCardProps {
   robot: Robot;
@@ -141,30 +143,16 @@ export default function RobotCard({ robot, index }: RobotCardProps) {
             </div>
           )}
           
-          <div className="flex space-x-2 mt-2">
-            {robot.status === 'active' ? (
-              <button className="btn-outline flex items-center justify-center px-3 py-1.5 rounded-md border border-gray-300 text-sm hover:bg-gray-50 transition-colors">
-                <Pause size={14} className="mr-1.5" />
-                Pause
-              </button>
-            ) : robot.status !== 'error' && robot.status !== 'maintenance' ? (
-              <button className="btn-outline flex items-center justify-center px-3 py-1.5 rounded-md border border-gray-300 text-sm hover:bg-gray-50 transition-colors">
-                <Play size={14} className="mr-1.5" />
-                Activate
-              </button>
-            ) : null}
-            
+          <div className="mt-4 space-y-3">
+            <RobotControls robot={robot} />
+            <HardwareStatus />
+          </div>
+          
+          <div className="flex space-x-2 mt-4">
             <button className="btn-outline flex items-center justify-center px-3 py-1.5 rounded-md border border-gray-300 text-sm hover:bg-gray-50 transition-colors">
               <RefreshCw size={14} className="mr-1.5" />
-              Refresh
+              Refresh Data
             </button>
-            
-            {robot.status === 'error' && (
-              <button className="flex items-center justify-center px-3 py-1.5 rounded-md border border-red-300 bg-red-50 text-red-700 text-sm hover:bg-red-100 transition-colors">
-                <AlertCircle size={14} className="mr-1.5" />
-                Resolve Error
-              </button>
-            )}
           </div>
         </motion.div>
       )}
