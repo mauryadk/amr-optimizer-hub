@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import Robots from "./pages/Robots";
 import Map from "./pages/Map";
 import Tasks from "./pages/Tasks";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -23,6 +24,7 @@ const App = () => (
           <Route path="/robots" element={<Robots />} />
           <Route path="/map" element={<Map />} />
           <Route path="/tasks" element={<Tasks />} />
+          <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
