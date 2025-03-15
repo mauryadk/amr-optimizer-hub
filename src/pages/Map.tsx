@@ -1,10 +1,10 @@
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import Sidebar from '@/components/layout/Sidebar';
 import MapView from '@/components/map/MapView';
-import { robots, robotPositions, fleetSummary } from '@/utils/mockData';
-import { cn } from '@/lib/utils';
+import MapEditor from '@/components/map/MapEditor';
+import { robots, fleetSummary } from '@/utils/mockData';
 import { 
   LocateFixed, 
   Layers, 
@@ -13,10 +13,16 @@ import {
   RefreshCw,
   Truck,
   Battery,
-  AlertTriangle
+  AlertTriangle,
+  Edit,
+  Eye
 } from 'lucide-react';
 
 export default function Map() {
+  const [editMode, setEditMode] = useState(false);
+  const [showBackgroundMap, setShowBackgroundMap] = useState(true);
+  const [showPaths, setShowPaths] = useState(true);
+  
   // Add page transition effect
   useEffect(() => {
     document.body.classList.add('page-transition');
@@ -36,8 +42,22 @@ export default function Map() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <h1 className="text-3xl font-bold">Fleet Map</h1>
-            <p className="text-gray-500 mt-1">Visualize your robots' positions in real-time</p>
+            <div className="flex justify-between items-center">
+              <div>
+                <h1 className="text-3xl font-bold">Fleet Map</h1>
+                <p className="text-gray-500 mt-1">Visualize and edit robot navigation paths</p>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <button 
+                  onClick={() => setEditMode(!editMode)}
+                  className={`px-3 py-1.5 rounded-md flex items-center text-sm ${editMode ? 'bg-primary text-white' : 'subtle-glass'}`}
+                >
+                  {editMode ? <Eye size={16} className="mr-1.5" /> : <Edit size={16} className="mr-1.5" />}
+                  {editMode ? 'View Mode' : 'Edit Mode'}
+                </button>
+              </div>
+            </div>
           </motion.div>
           
           {/* Quick Status Summary */}
@@ -86,14 +106,20 @@ export default function Map() {
             className="mt-4 flex justify-between items-center"
           >
             <div className="flex gap-2">
-              <button className="subtle-glass px-3 py-1.5 rounded-md flex items-center text-sm">
+              <button 
+                className="subtle-glass px-3 py-1.5 rounded-md flex items-center text-sm"
+                onClick={() => setShowPaths(!showPaths)}
+              >
                 <Layers size={16} className="mr-1.5" />
-                Layers
+                {showPaths ? 'Hide Paths' : 'Show Paths'}
               </button>
               
-              <button className="subtle-glass px-3 py-1.5 rounded-md flex items-center text-sm">
+              <button 
+                className="subtle-glass px-3 py-1.5 rounded-md flex items-center text-sm"
+                onClick={() => setShowBackgroundMap(!showBackgroundMap)}
+              >
                 <LocateFixed size={16} className="mr-1.5" />
-                Center
+                {showBackgroundMap ? 'Hide ROS Map' : 'Show ROS Map'}
               </button>
               
               <button className="subtle-glass px-3 py-1.5 rounded-md flex items-center text-sm">
@@ -112,9 +138,24 @@ export default function Map() {
             </div>
           </motion.div>
           
+          {editMode && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              transition={{ duration: 0.3 }}
+              className="mt-4"
+            >
+              <MapEditor />
+            </motion.div>
+          )}
+          
           {/* Main Map View */}
           <div className="mt-4 h-[calc(100vh-250px)]">
-            <MapView />
+            <MapView 
+              editMode={editMode} 
+              showBackgroundMap={showBackgroundMap}
+              showPaths={showPaths}
+            />
           </div>
         </div>
       </div>

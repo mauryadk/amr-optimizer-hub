@@ -1,25 +1,44 @@
 
-import { useState, useEffect } from 'react';
-import { locations, robotPositions, robots, getStatusColor } from '@/utils/mockData';
+import { useState, useEffect, useRef } from 'react';
+import { robotPositions, robots, getStatusColor } from '@/utils/mockData';
 import { motion } from 'framer-motion';
 import { 
-  MapPin, 
   BatteryMedium, 
-  Zap, 
-  Package, 
+  AlertCircle,
   Truck,
-  BoxSelect,
-  AlertCircle
+  Map as MapIcon,
+  RotateCw
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import NavigationLayer from './NavigationLayer';
+import { toast } from '@/hooks/use-toast';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 
-export default function MapView() {
-  const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
+interface MapViewProps {
+  editMode?: boolean;
+  showBackgroundMap?: boolean;
+  showPaths?: boolean;
+}
+
+export default function MapView({ 
+  editMode = false, 
+  showBackgroundMap = true,
+  showPaths = true
+}: MapViewProps) {
   const [hoveredRobot, setHoveredRobot] = useState<string | null>(null);
+  const [animatedPositions, setAnimatedPositions] = useState(robotPositions);
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const [viewScale, setViewScale] = useState(1);
+  const [viewPosition, setViewPosition] = useState({ x: 0, y: 0 });
+  const [isDraggingView, setIsDraggingView] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [showNodeDetails, setShowNodeDetails] = useState(false);
+  const [selectedNodeInfo, setSelectedNodeInfo] = useState<any>(null);
+  
+  const mapContainerRef = useRef<HTMLDivElement>(null);
   
   // Simulated movement for active robots
-  const [animatedPositions, setAnimatedPositions] = useState(robotPositions);
-  
   useEffect(() => {
     // Only animate robots with "active" status
     const activeRobotIds = robots
@@ -44,20 +63,73 @@ export default function MapView() {
     return () => clearInterval(interval);
   }, []);
 
-  // Get icon based on location type
-  const getLocationIcon = (type: string) => {
-    switch (type) {
-      case 'charging':
-        return <Zap size={16} className="text-yellow-500" />;
-      case 'pickup':
-        return <Package size={16} className="text-blue-500" />;
-      case 'delivery':
-        return <BoxSelect size={16} className="text-indigo-500" />;
-      case 'storage':
-        return <Package size={16} className="text-gray-500" />;
-      default:
-        return <MapPin size={16} className="text-red-500" />;
+  // Simulate loading ROS map
+  useEffect(() => {
+    if (showBackgroundMap) {
+      setMapLoaded(false);
+      const timer = setTimeout(() => {
+        setMapLoaded(true);
+      }, 1000);
+      
+      return () => clearTimeout(timer);
     }
+  }, [showBackgroundMap]);
+
+  // Handle view dragging
+  const handleViewDragStart = (e: React.MouseEvent) => {
+    if (!editMode) {
+      setIsDraggingView(true);
+      setDragStart({ x: e.clientX, y: e.clientY });
+    }
+  };
+
+  const handleViewDragMove = (e: React.MouseEvent) => {
+    if (isDraggingView && !editMode) {
+      const dx = e.clientX - dragStart.x;
+      const dy = e.clientY - dragStart.y;
+      
+      setViewPosition(prev => ({
+        x: prev.x + dx,
+        y: prev.y + dy
+      }));
+      
+      setDragStart({ x: e.clientX, y: e.clientY });
+    }
+  };
+
+  const handleViewDragEnd = () => {
+    setIsDraggingView(false);
+  };
+
+  // Handle mouse wheel zoom
+  const handleWheel = (e: React.WheelEvent) => {
+    if (!editMode) {
+      const delta = e.deltaY * -0.01;
+      const newScale = Math.min(Math.max(viewScale + delta, 0.5), 2);
+      setViewScale(newScale);
+    }
+  };
+
+  // Reset view
+  const resetView = () => {
+    setViewScale(1);
+    setViewPosition({ x: 0, y: 0 });
+    toast({
+      title: "View reset",
+      description: "Map view has been reset to the default position"
+    });
+  };
+
+  // Handle node selection
+  const handleNodeSelect = (nodeId: string) => {
+    setSelectedNodeInfo({
+      id: nodeId,
+      name: "Pickup Station A",
+      type: "pickup",
+      connections: 3,
+      lastVisited: "2 hours ago"
+    });
+    setShowNodeDetails(true);
   };
 
   // Find robot details
@@ -70,125 +142,164 @@ export default function MapView() {
       transition={{ duration: 0.5 }}
       className="glass-card rounded-xl p-5 shadow-sm h-full relative overflow-hidden"
     >
-      <h2 className="text-lg font-semibold mb-4">Warehouse Map</h2>
-
-      <div className="relative h-[calc(100%-2rem)] bg-gray-50 rounded-lg overflow-hidden border border-gray-100">
-        {/* Map markers for locations */}
-        {locations.map(location => (
-          <motion.div
-            key={location.id}
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ duration: 0.4, delay: 0.1 }}
-            className={cn(
-              "absolute rounded-full p-1.5 border-2 cursor-pointer transition-all duration-200",
-              selectedLocation === location.id 
-                ? "bg-white border-primary shadow-md" 
-                : "bg-white/80 border-gray-300 hover:border-primary/70"
-            )}
-            style={{ 
-              left: `${location.x}px`, 
-              top: `${location.y}px`,
-              transform: 'translate(-50%, -50%)'
-            }}
-            onClick={() => setSelectedLocation(location.id)}
-          >
-            {getLocationIcon(location.type)}
-            
-            {selectedLocation === location.id && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 px-2 py-1 bg-white rounded shadow-sm text-xs whitespace-nowrap"
-              >
-                {location.name}
-              </motion.div>
-            )}
-          </motion.div>
-        ))}
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-lg font-semibold">Robot Navigation Map</h2>
         
-        {/* Robot markers */}
-        {animatedPositions.map(position => {
-          const robot = findRobot(position.robotId);
-          if (!robot) return null;
-          
-          return (
-            <motion.div
-              key={position.robotId}
-              className="absolute"
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ type: "spring", stiffness: 500, damping: 30, delay: 0.3 }}
-              style={{ 
-                left: `${position.x}px`, 
-                top: `${position.y}px`,
-                transform: 'translate(-50%, -50%)',
-                zIndex: hoveredRobot === position.robotId ? 10 : 5
-              }}
-              onMouseEnter={() => setHoveredRobot(position.robotId)}
-              onMouseLeave={() => setHoveredRobot(null)}
+        {!editMode && (
+          <div className="flex items-center space-x-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={resetView}
+              className="flex items-center"
             >
-              <motion.div 
-                className={cn(
-                  "rounded-full flex items-center justify-center relative cursor-pointer",
-                  robot.status === 'active' ? "w-8 h-8" : "w-7 h-7",
-                  robot.status === 'error' ? "bg-red-100" : "bg-white"
-                )}
-                whileHover={{ scale: 1.1 }}
-                animate={{ 
-                  x: robot.status === 'active' ? [0, 1, 0, -1, 0] : 0,
-                  y: robot.status === 'active' ? [0, 1, 0, -1, 0] : 0,
+              <RotateCw size={14} className="mr-1" />
+              Reset View
+            </Button>
+            <div className="text-xs bg-gray-100 px-2 py-1 rounded-md">
+              Zoom: {Math.round(viewScale * 100)}%
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div 
+        className={cn(
+          "relative h-[calc(100%-2rem)] bg-gray-50 rounded-lg overflow-hidden border border-gray-100 map-container",
+          editMode ? "cursor-crosshair" : isDraggingView ? "cursor-grabbing" : "cursor-grab"
+        )}
+        ref={mapContainerRef}
+        onMouseDown={handleViewDragStart}
+        onMouseMove={handleViewDragMove}
+        onMouseUp={handleViewDragEnd}
+        onMouseLeave={handleViewDragEnd}
+        onWheel={handleWheel}
+      >
+        {/* ROS2 Navigation Map Layer */}
+        {showBackgroundMap && (
+          <div className="absolute inset-0 z-0">
+            {!mapLoaded ? (
+              <div className="w-full h-full flex items-center justify-center">
+                <div className="flex flex-col items-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  <p className="mt-2 text-sm text-gray-500">Loading ROS2 navigation map...</p>
+                </div>
+              </div>
+            ) : (
+              <div className="w-full h-full opacity-30">
+                <img 
+                  src="https://i.imgur.com/jVEwTyi.png" 
+                  alt="ROS2 Navigation Map" 
+                  className="w-full h-full object-cover"
+                  style={{
+                    transform: `scale(${viewScale}) translate(${viewPosition.x / viewScale}px, ${viewPosition.y / viewScale}px)`,
+                    transformOrigin: 'center',
+                  }}
+                />
+              </div>
+            )}
+          </div>
+        )}
+        
+        {/* Navigation Path Layer */}
+        <div 
+          className="absolute inset-0"
+          style={{
+            transform: `scale(${viewScale}) translate(${viewPosition.x / viewScale}px, ${viewPosition.y / viewScale}px)`,
+            transformOrigin: 'center',
+          }}
+        >
+          <NavigationLayer 
+            editMode={editMode} 
+            showPaths={showPaths}
+            robotPositions={animatedPositions}
+            onNodeSelect={handleNodeSelect}
+          />
+        </div>
+
+        {/* Robot Marker Layer */}
+        <div 
+          className="absolute inset-0"
+          style={{
+            transform: `scale(${viewScale}) translate(${viewPosition.x / viewScale}px, ${viewPosition.y / viewScale}px)`,
+            transformOrigin: 'center',
+          }}
+        >
+          {animatedPositions.map(position => {
+            const robot = findRobot(position.robotId);
+            if (!robot) return null;
+            
+            return (
+              <motion.div
+                key={position.robotId}
+                className="absolute"
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 500, damping: 30, delay: 0.3 }}
+                style={{ 
+                  left: `${position.x}px`, 
+                  top: `${position.y}px`,
+                  transform: 'translate(-50%, -50%)',
+                  zIndex: hoveredRobot === position.robotId ? 10 : 5
                 }}
-                transition={{ 
-                  x: { repeat: Infinity, duration: 2 },
-                  y: { repeat: Infinity, duration: 2 }
-                }}
+                onMouseEnter={() => setHoveredRobot(position.robotId)}
+                onMouseLeave={() => setHoveredRobot(null)}
               >
-                {robot.status === 'error' ? (
-                  <AlertCircle size={16} className="text-red-500" />
-                ) : (
-                  <Truck size={16} className="text-primary" />
-                )}
-                
-                <div className={cn(
-                  "absolute -top-1 -right-1 w-3 h-3 rounded-full border border-white",
-                  getStatusColor(robot.status)
-                )} />
-                
-                {robot.status === 'charging' && (
-                  <motion.div
-                    animate={{ opacity: [0.5, 1, 0.5] }}
-                    transition={{ duration: 1.5, repeat: Infinity }}
-                    className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-yellow-400 opacity-50"
-                  />
-                )}
-                
-                {hoveredRobot === position.robotId && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 bg-white px-3 py-2 rounded-md shadow-md text-sm whitespace-nowrap z-10 border border-gray-100"
-                  >
-                    <div className="font-medium">{robot.name}</div>
-                    <div className="flex items-center mt-1 text-xs text-gray-500">
-                      <div className={cn(
-                        "w-2 h-2 rounded-full mr-1.5",
-                        getStatusColor(robot.status)
-                      )} />
-                      <span className="capitalize">{robot.status}</span>
-                    </div>
-                    <div className="flex items-center mt-1 text-xs">
-                      <BatteryMedium size={12} className="mr-1 text-gray-500" />
-                      <span>{robot.batteryLevel}%</span>
-                    </div>
-                  </motion.div>
-                )}
+                <motion.div 
+                  className={cn(
+                    "rounded-full flex items-center justify-center relative cursor-pointer",
+                    robot.status === 'active' ? "w-8 h-8" : "w-7 h-7",
+                    robot.status === 'error' ? "bg-red-100" : "bg-white"
+                  )}
+                  whileHover={{ scale: 1.1 }}
+                  animate={{ 
+                    x: robot.status === 'active' ? [0, 1, 0, -1, 0] : 0,
+                    y: robot.status === 'active' ? [0, 1, 0, -1, 0] : 0,
+                  }}
+                  transition={{ 
+                    x: { repeat: Infinity, duration: 2 },
+                    y: { repeat: Infinity, duration: 2 }
+                  }}
+                >
+                  {robot.status === 'error' ? (
+                    <AlertCircle size={16} className="text-red-500" />
+                  ) : (
+                    <Truck size={16} className="text-primary" />
+                  )}
+                  
+                  <div className={cn(
+                    "absolute -top-1 -right-1 w-3 h-3 rounded-full border border-white",
+                    getStatusColor(robot.status)
+                  )} />
+                  
+                  {hoveredRobot === position.robotId && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 bg-white px-3 py-2 rounded-md shadow-md text-sm whitespace-nowrap z-10 border border-gray-100"
+                    >
+                      <div className="font-medium">{robot.name}</div>
+                      <div className="flex items-center mt-1 text-xs text-gray-500">
+                        <div className={cn(
+                          "w-2 h-2 rounded-full mr-1.5",
+                          getStatusColor(robot.status)
+                        )} />
+                        <span className="capitalize">{robot.status}</span>
+                      </div>
+                      <div className="flex items-center mt-1 text-xs">
+                        <BatteryMedium size={12} className="mr-1 text-gray-500" />
+                        <span>{robot.batteryLevel}%</span>
+                      </div>
+                    </motion.div>
+                  )}
+                </motion.div>
               </motion.div>
-            </motion.div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
       
+      {/* Map Legend */}
       <div className="absolute bottom-5 right-5 bg-white rounded-md shadow-sm px-3 py-2 text-xs border border-gray-100">
         <div className="flex items-center mb-2">
           <div className="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
@@ -198,11 +309,70 @@ export default function MapView() {
           <div className="w-3 h-3 rounded-full bg-yellow-400 mr-2"></div>
           <span>Charging Robot</span>
         </div>
-        <div className="flex items-center">
+        <div className="flex items-center mb-2">
           <div className="w-3 h-3 rounded-full bg-red-500 mr-2"></div>
           <span>Error State</span>
         </div>
+        <div className="flex items-center">
+          <div className="border-2 w-6 border-blue-400 mr-2"></div>
+          <span>Preferred Path</span>
+        </div>
       </div>
+      
+      {/* ROS Map Info */}
+      {showBackgroundMap && mapLoaded && (
+        <div className="absolute bottom-5 left-5 bg-white rounded-md shadow-sm px-3 py-2 text-xs border border-gray-100 flex items-center">
+          <MapIcon size={14} className="mr-2 text-gray-500" />
+          <span>ROS2 Navigation Map (warehouse_1.pgm)</span>
+        </div>
+      )}
+      
+      {/* Node Details Dialog */}
+      <Dialog open={showNodeDetails} onOpenChange={setShowNodeDetails}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Node Details</DialogTitle>
+            <DialogDescription>
+              Information about the selected station
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedNodeInfo && (
+            <div className="py-4">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="text-sm font-medium">ID:</div>
+                <div className="text-sm">{selectedNodeInfo.id}</div>
+                
+                <div className="text-sm font-medium">Name:</div>
+                <div className="text-sm">{selectedNodeInfo.name}</div>
+                
+                <div className="text-sm font-medium">Type:</div>
+                <div className="text-sm capitalize">{selectedNodeInfo.type}</div>
+                
+                <div className="text-sm font-medium">Connected paths:</div>
+                <div className="text-sm">{selectedNodeInfo.connections}</div>
+                
+                <div className="text-sm font-medium">Last visited:</div>
+                <div className="text-sm">{selectedNodeInfo.lastVisited}</div>
+              </div>
+              
+              <div className="mt-4 p-3 bg-gray-50 rounded-md">
+                <h4 className="text-sm font-medium mb-2">Connected Stations</h4>
+                <ul className="text-xs space-y-1">
+                  <li>• Junction 2 (distance: 25m)</li>
+                  <li>• Charging Station 1 (distance: 40m)</li>
+                  <li>• Delivery Point A (distance: 15m)</li>
+                </ul>
+              </div>
+            </div>
+          )}
+          
+          <div className="flex justify-end space-x-2">
+            <Button variant="outline" onClick={() => setShowNodeDetails(false)}>Close</Button>
+            <Button>Edit Node</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 }
