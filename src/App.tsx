@@ -12,6 +12,8 @@ import Settings from "./pages/Settings";
 import Documentation from "./pages/Documentation";
 import NotFound from "./pages/NotFound";
 import Footer from "./components/layout/Footer";
+import Header from "./components/layout/Header";
+import Sidebar from "./components/layout/Sidebar";
 
 const queryClient = new QueryClient();
 
@@ -21,16 +23,24 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/robots" element={<Robots />} />
-          <Route path="/map" element={<Map />} />
-          <Route path="/tasks" element={<Tasks />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/documentation" element={<Documentation />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-        <Footer />
+        <div className="flex h-screen bg-gray-50">
+          <Sidebar />
+          <div className="flex flex-col flex-1 overflow-hidden">
+            <Header />
+            <main className="flex-1 overflow-auto p-6">
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/robots" element={<Robots />} />
+                <Route path="/map" element={<Map />} />
+                <Route path="/tasks" element={<Tasks />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/documentation" element={<Documentation />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </main>
+            <Footer />
+          </div>
+        </div>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
