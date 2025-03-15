@@ -14,17 +14,28 @@ import {
   AlertTriangle,
   Edit,
   Eye,
-  Loader2
+  Loader2,
+  Save,
+  Share2,
+  Upload,
+  Download,
+  MapPin
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useVDA5050 } from '@/hooks/use-vda5050';
 import { Button } from '@/components/ui/button';
+import MapDistribution from '@/components/map/MapDistribution';
+import NewMapGeneration from '@/components/map/NewMapGeneration';
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 
 export default function Map() {
   const [editMode, setEditMode] = useState(false);
   const [showBackgroundMap, setShowBackgroundMap] = useState(true);
   const [showPaths, setShowPaths] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [isGeneratingMap, setIsGeneratingMap] = useState(false);
+  const [showDistributionDialog, setShowDistributionDialog] = useState(false);
+  const [showGenerationDialog, setShowGenerationDialog] = useState(false);
   
   const { robotStates, isInitialized } = useVDA5050();
   
@@ -73,6 +84,18 @@ export default function Map() {
         description: "Latest robot positions and map data loaded"
       });
     }, 1500);
+  }, []);
+
+  // Save current map
+  const saveMap = useCallback(() => {
+    setIsLoading(true);
+    setTimeout(() => {
+      setIsLoading(false);
+      toast({
+        title: "Map saved",
+        description: "Current map has been saved to the database"
+      });
+    }, 1000);
   }, []);
 
   return (
@@ -141,6 +164,19 @@ export default function Map() {
                 <div className="font-semibold">{fleetSummary.errorRobots}</div>
               </div>
             </div>
+            
+            {/* New Map Generation Status */}
+            {isGeneratingMap && (
+              <div className="subtle-glass px-4 py-2 rounded-md flex items-center">
+                <div className="p-1.5 rounded-full bg-blue-100 mr-3">
+                  <MapPin size={16} className="text-blue-600" />
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500">Map Generation</div>
+                  <div className="font-semibold text-blue-600">In Progress</div>
+                </div>
+              </div>
+            )}
           </motion.div>
           
           {/* Map Controls */}
@@ -150,7 +186,7 @@ export default function Map() {
             transition={{ duration: 0.4, delay: 0.2 }}
             className="mt-4 flex justify-between items-center"
           >
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button 
                 variant="outline"
                 size="sm"
@@ -185,6 +221,76 @@ export default function Map() {
                 )}
                 Refresh
               </Button>
+              
+              <Button 
+                variant="outline"
+                size="sm"
+                className="flex items-center"
+                onClick={saveMap}
+                disabled={isLoading}
+              >
+                <Save size={16} className="mr-1.5" />
+                Save Map
+              </Button>
+              
+              <Dialog open={showDistributionDialog} onOpenChange={setShowDistributionDialog}>
+                <DialogTrigger asChild>
+                  <Button 
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center"
+                  >
+                    <Share2 size={16} className="mr-1.5" />
+                    Distribute Map
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <MapDistribution onClose={() => setShowDistributionDialog(false)} />
+                </DialogContent>
+              </Dialog>
+              
+              <Dialog open={showGenerationDialog} onOpenChange={setShowGenerationDialog}>
+                <DialogTrigger asChild>
+                  <Button 
+                    variant={isGeneratingMap ? "default" : "outline"}
+                    size="sm"
+                    className="flex items-center"
+                  >
+                    <MapPin size={16} className="mr-1.5" />
+                    New Map Generation
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <NewMapGeneration 
+                    onClose={() => setShowGenerationDialog(false)}
+                    onStartGeneration={() => {
+                      setIsGeneratingMap(true);
+                      setShowGenerationDialog(false);
+                    }}
+                    onStopGeneration={() => setIsGeneratingMap(false)}
+                  />
+                </DialogContent>
+              </Dialog>
+            </div>
+            
+            <div className="flex gap-2">
+              <Button 
+                variant="outline"
+                size="sm"
+                className="flex items-center"
+              >
+                <Upload size={16} className="mr-1.5" />
+                Import
+              </Button>
+              
+              <Button 
+                variant="outline"
+                size="sm"
+                className="flex items-center"
+              >
+                <Download size={16} className="mr-1.5" />
+                Export
+              </Button>
             </div>
           </motion.div>
           
@@ -205,6 +311,7 @@ export default function Map() {
               editMode={editMode} 
               showBackgroundMap={showBackgroundMap}
               showPaths={showPaths}
+              isGeneratingMap={isGeneratingMap}
             />
           </div>
         </div>

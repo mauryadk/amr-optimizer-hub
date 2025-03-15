@@ -9,7 +9,8 @@ import {
   Map as MapIcon,
   RotateCw,
   ZoomIn,
-  ZoomOut
+  ZoomOut,
+  Save
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import NavigationLayer from './NavigationLayer';
@@ -21,12 +22,14 @@ interface MapViewProps {
   editMode?: boolean;
   showBackgroundMap?: boolean;
   showPaths?: boolean;
+  isGeneratingMap?: boolean;
 }
 
 export default function MapView({ 
   editMode = false, 
   showBackgroundMap = true,
-  showPaths = true
+  showPaths = true,
+  isGeneratingMap = false
 }: MapViewProps) {
   const [hoveredRobot, setHoveredRobot] = useState<string | null>(null);
   const [animatedPositions, setAnimatedPositions] = useState(robotPositions);
@@ -37,9 +40,31 @@ export default function MapView({
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [showNodeDetails, setShowNodeDetails] = useState(false);
   const [selectedNodeInfo, setSelectedNodeInfo] = useState<any>(null);
+  const [mapGenerationProgress, setMapGenerationProgress] = useState(0);
+  const [showMapPreview, setShowMapPreview] = useState(false);
   
   const mapContainerRef = useRef<HTMLDivElement>(null);
   
+  // Simulate map generation progress when isGeneratingMap is true
+  useEffect(() => {
+    if (isGeneratingMap) {
+      const interval = setInterval(() => {
+        setMapGenerationProgress(prev => {
+          if (prev >= 100) {
+            clearInterval(interval);
+            return 100;
+          }
+          return prev + 5;
+        });
+      }, 2000);
+      
+      return () => {
+        clearInterval(interval);
+        setMapGenerationProgress(0);
+      };
+    }
+  }, [isGeneratingMap]);
+
   // Simulated movement for active robots
   useEffect(() => {
     // Only animate robots with "active" status
@@ -152,6 +177,19 @@ export default function MapView({
     setShowNodeDetails(true);
   }, []);
 
+  // Save the generating map
+  const handleSaveGeneratingMap = useCallback(() => {
+    toast({
+      title: "Map saved",
+      description: "The current map has been saved as a snapshot"
+    });
+  }, []);
+
+  // View current map progress
+  const handleViewMapProgress = useCallback(() => {
+    setShowMapPreview(true);
+  }, []);
+
   // Find robot details
   const findRobot = useCallback((id: string) => robots.find(r => r.id === id), []);
 
@@ -196,7 +234,7 @@ export default function MapView({
         onWheel={handleWheel}
       >
         {/* ROS2 Navigation Map Layer */}
-        {showBackgroundMap && (
+        {showBackgroundMap && !isGeneratingMap && (
           <div className="absolute inset-0 z-0">
             {!mapLoaded ? (
               <div className="w-full h-full flex items-center justify-center">
@@ -221,21 +259,81 @@ export default function MapView({
           </div>
         )}
         
+        {/* Map Generation Layer */}
+        {isGeneratingMap && (
+          <div className="absolute inset-0 z-0">
+            <div className="w-full h-full">
+              {mapGenerationProgress < 100 ? (
+                <div className="w-full h-full flex flex-col items-center justify-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mb-3"></div>
+                  <p className="text-sm text-gray-700 font-medium">Generating Map: {mapGenerationProgress}%</p>
+                  <p className="mt-1 text-xs text-gray-500">Robot is exploring the environment</p>
+                  
+                  <div className="mt-4 w-64 h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-blue-500 transition-all duration-300 ease-out" 
+                      style={{ width: `${mapGenerationProgress}%` }} 
+                    />
+                  </div>
+                  
+                  <div className="mt-5 space-x-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={handleViewMapProgress}
+                      className="text-xs"
+                    >
+                      View Progress
+                    </Button>
+                    
+                    <Button 
+                      size="sm" 
+                      onClick={handleSaveGeneratingMap}
+                      className="text-xs"
+                    >
+                      <Save size={12} className="mr-1" />
+                      Save Snapshot
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="w-full h-full">
+                  <img 
+                    src="https://i.imgur.com/O9mnPeV.png" 
+                    alt="Generated Map" 
+                    className="w-full h-full object-cover opacity-70"
+                    style={{
+                      transform: `scale(${viewScale}) translate(${viewPosition.x / viewScale}px, ${viewPosition.y / viewScale}px)`,
+                      transformOrigin: 'center',
+                    }}
+                  />
+                  
+                  <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-green-100 text-green-800 px-4 py-2 rounded-full text-sm font-medium border border-green-200">
+                    Map Generation Complete!
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        
         {/* Navigation Path Layer */}
-        <div 
-          className="absolute inset-0"
-          style={{
-            transform: `scale(${viewScale}) translate(${viewPosition.x / viewScale}px, ${viewPosition.y / viewScale}px)`,
-            transformOrigin: 'center',
-          }}
-        >
-          <NavigationLayer 
-            editMode={editMode} 
-            showPaths={showPaths}
-            robotPositions={animatedPositions}
-            onNodeSelect={handleNodeSelect}
-          />
-        </div>
+        {!isGeneratingMap && (
+          <div 
+            className="absolute inset-0"
+            style={{
+              transform: `scale(${viewScale}) translate(${viewPosition.x / viewScale}px, ${viewPosition.y / viewScale}px)`,
+              transformOrigin: 'center',
+            }}
+          >
+            <NavigationLayer 
+              editMode={editMode} 
+              showPaths={showPaths}
+              robotPositions={animatedPositions}
+              onNodeSelect={handleNodeSelect}
+            />
+          </div>
+        )}
 
         {/* Robot Marker Layer */}
         <div 
@@ -269,7 +367,7 @@ export default function MapView({
                   className={cn(
                     "rounded-full flex items-center justify-center relative cursor-pointer",
                     robot.status === 'active' ? "w-8 h-8" : "w-7 h-7",
-                    robot.status === 'error' ? "bg-red-100" : "bg-white"
+                    robot.status === 'error' ? "bg-red-100" : isGeneratingMap && robot.id === 'robot1' ? "bg-blue-100" : "bg-white"
                   )}
                   whileHover={{ scale: 1.1 }}
                   animate={{ 
@@ -283,13 +381,15 @@ export default function MapView({
                 >
                   {robot.status === 'error' ? (
                     <AlertCircle size={16} className="text-red-500" />
+                  ) : isGeneratingMap && robot.id === 'robot1' ? (
+                    <MapIcon size={16} className="text-blue-500" />
                   ) : (
                     <Truck size={16} className="text-primary" />
                   )}
                   
                   <div className={cn(
                     "absolute -top-1 -right-1 w-3 h-3 rounded-full border border-white",
-                    getStatusColor(robot.status)
+                    isGeneratingMap && robot.id === 'robot1' ? "bg-blue-500" : getStatusColor(robot.status)
                   )} />
                   
                   {hoveredRobot === position.robotId && (
@@ -302,14 +402,23 @@ export default function MapView({
                       <div className="flex items-center mt-1 text-xs text-gray-500">
                         <div className={cn(
                           "w-2 h-2 rounded-full mr-1.5",
-                          getStatusColor(robot.status)
+                          isGeneratingMap && robot.id === 'robot1' ? "bg-blue-500" : getStatusColor(robot.status)
                         )} />
-                        <span className="capitalize">{robot.status}</span>
+                        <span className="capitalize">
+                          {isGeneratingMap && robot.id === 'robot1' ? "Mapping" : robot.status}
+                        </span>
                       </div>
                       <div className="flex items-center mt-1 text-xs">
                         <BatteryMedium size={12} className="mr-1 text-gray-500" />
                         <span>{robot.batteryLevel}%</span>
                       </div>
+                      
+                      {isGeneratingMap && robot.id === 'robot1' && (
+                        <div className="flex items-center mt-1 text-xs text-blue-500 font-medium">
+                          <MapIcon size={12} className="mr-1" />
+                          <span>Map Progress: {mapGenerationProgress}%</span>
+                        </div>
+                      )}
                     </motion.div>
                   )}
                 </motion.div>
@@ -349,6 +458,12 @@ export default function MapView({
           <div className="w-3 h-3 rounded-full bg-red-500 mr-2"></div>
           <span>Error State</span>
         </div>
+        {isGeneratingMap && (
+          <div className="flex items-center mb-2">
+            <div className="w-3 h-3 rounded-full bg-blue-500 mr-2"></div>
+            <span>Mapping Robot</span>
+          </div>
+        )}
         <div className="flex items-center">
           <div className="border-2 w-6 border-blue-400 mr-2"></div>
           <span>Preferred Path</span>
@@ -356,10 +471,18 @@ export default function MapView({
       </div>
       
       {/* ROS Map Info */}
-      {showBackgroundMap && mapLoaded && (
+      {showBackgroundMap && mapLoaded && !isGeneratingMap && (
         <div className="absolute bottom-5 left-5 bg-white rounded-md shadow-sm px-3 py-2 text-xs border border-gray-100 flex items-center">
           <MapIcon size={14} className="mr-2 text-gray-500" />
           <span>ROS2 Navigation Map (warehouse_1.pgm)</span>
+        </div>
+      )}
+      
+      {/* Map Generation Info */}
+      {isGeneratingMap && mapGenerationProgress >= 100 && (
+        <div className="absolute bottom-5 left-5 bg-white rounded-md shadow-sm px-3 py-2 text-xs border border-green-200 flex items-center text-green-800 bg-green-50">
+          <MapIcon size={14} className="mr-2" />
+          <span>New Map Ready (warehouse_new.pgm)</span>
         </div>
       )}
       
@@ -406,6 +529,68 @@ export default function MapView({
           <div className="flex justify-end space-x-2">
             <Button variant="outline" onClick={() => setShowNodeDetails(false)}>Close</Button>
             <Button>Edit Node</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Map Generation Preview Dialog */}
+      <Dialog open={showMapPreview} onOpenChange={setShowMapPreview}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Map Generation Preview</DialogTitle>
+            <DialogDescription>
+              Current progress of the map being generated
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <div className="border border-gray-200 rounded-md overflow-hidden">
+              <img 
+                src={mapGenerationProgress < 50 ? "https://i.imgur.com/EqYYmb0.png" : "https://i.imgur.com/O9mnPeV.png"} 
+                alt="Map Generation Preview" 
+                className="w-full"
+              />
+            </div>
+            
+            <div className="mt-3 flex justify-between text-xs text-gray-500">
+              <span>Progress: {mapGenerationProgress}%</span>
+              <span>Area mapped: {Math.floor(mapGenerationProgress * 5.2)}m²</span>
+            </div>
+            
+            <div className="mt-4 p-3 bg-gray-50 rounded-md">
+              <h4 className="text-sm font-medium mb-2">Mapping Information</h4>
+              <div className="grid grid-cols-2 gap-1 text-xs">
+                <div className="text-gray-500">Robot:</div>
+                <div>{robots.find(r => r.id === 'robot1')?.name}</div>
+                <div className="text-gray-500">Start time:</div>
+                <div>{new Date().toLocaleTimeString()}</div>
+                <div className="text-gray-500">Estimated completion:</div>
+                <div>{mapGenerationProgress < 100 ? 'Approximately 5 minutes' : 'Complete'}</div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex justify-end space-x-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowMapPreview(false)}
+            >
+              Close
+            </Button>
+            {mapGenerationProgress >= 100 && (
+              <Button 
+                onClick={() => {
+                  setShowMapPreview(false);
+                  toast({
+                    title: "Map saved",
+                    description: "The generated map has been saved"
+                  });
+                }}
+              >
+                <Save size={16} className="mr-1.5" />
+                Save Map
+              </Button>
+            )}
           </div>
         </DialogContent>
       </Dialog>
