@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { robotPositions, robots, getStatusColor } from '@/utils/mockData';
 import { motion } from 'framer-motion';
 import { 
@@ -7,7 +7,9 @@ import {
   AlertCircle,
   Truck,
   Map as MapIcon,
-  RotateCw
+  RotateCw,
+  ZoomIn,
+  ZoomOut
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import NavigationLayer from './NavigationLayer';
@@ -76,14 +78,14 @@ export default function MapView({
   }, [showBackgroundMap]);
 
   // Handle view dragging
-  const handleViewDragStart = (e: React.MouseEvent) => {
+  const handleViewDragStart = useCallback((e: React.MouseEvent) => {
     if (!editMode) {
       setIsDraggingView(true);
       setDragStart({ x: e.clientX, y: e.clientY });
     }
-  };
+  }, [editMode]);
 
-  const handleViewDragMove = (e: React.MouseEvent) => {
+  const handleViewDragMove = useCallback((e: React.MouseEvent) => {
     if (isDraggingView && !editMode) {
       const dx = e.clientX - dragStart.x;
       const dy = e.clientY - dragStart.y;
@@ -95,33 +97,51 @@ export default function MapView({
       
       setDragStart({ x: e.clientX, y: e.clientY });
     }
-  };
+  }, [isDraggingView, editMode, dragStart]);
 
-  const handleViewDragEnd = () => {
+  const handleViewDragEnd = useCallback(() => {
     setIsDraggingView(false);
-  };
+  }, []);
+
+  // Handle zoom in/out button clicks
+  const handleZoomIn = useCallback(() => {
+    setViewScale(prev => Math.min(prev + 0.1, 2));
+    toast({
+      title: "Zoomed in",
+      description: `Zoom level: ${Math.round((viewScale + 0.1) * 100)}%`
+    });
+  }, [viewScale]);
+
+  const handleZoomOut = useCallback(() => {
+    setViewScale(prev => Math.max(prev - 0.1, 0.5));
+    toast({
+      title: "Zoomed out",
+      description: `Zoom level: ${Math.round((viewScale - 0.1) * 100)}%`
+    });
+  }, [viewScale]);
 
   // Handle mouse wheel zoom
-  const handleWheel = (e: React.WheelEvent) => {
+  const handleWheel = useCallback((e: React.WheelEvent) => {
     if (!editMode) {
-      const delta = e.deltaY * -0.01;
+      e.preventDefault();
+      const delta = e.deltaY * -0.001;
       const newScale = Math.min(Math.max(viewScale + delta, 0.5), 2);
       setViewScale(newScale);
     }
-  };
+  }, [editMode, viewScale]);
 
   // Reset view
-  const resetView = () => {
+  const resetView = useCallback(() => {
     setViewScale(1);
     setViewPosition({ x: 0, y: 0 });
     toast({
       title: "View reset",
       description: "Map view has been reset to the default position"
     });
-  };
+  }, []);
 
   // Handle node selection
-  const handleNodeSelect = (nodeId: string) => {
+  const handleNodeSelect = useCallback((nodeId: string) => {
     setSelectedNodeInfo({
       id: nodeId,
       name: "Pickup Station A",
@@ -130,10 +150,10 @@ export default function MapView({
       lastVisited: "2 hours ago"
     });
     setShowNodeDetails(true);
-  };
+  }, []);
 
   // Find robot details
-  const findRobot = (id: string) => robots.find(r => r.id === id);
+  const findRobot = useCallback((id: string) => robots.find(r => r.id === id), []);
 
   return (
     <motion.div
@@ -296,6 +316,22 @@ export default function MapView({
               </motion.div>
             );
           })}
+        </div>
+        
+        {/* Zoom Controls */}
+        <div className="absolute bottom-16 right-5 flex flex-col bg-white rounded-md shadow-sm border border-gray-100 overflow-hidden">
+          <button 
+            className="p-2 hover:bg-gray-50 border-b border-gray-100 transition-colors"
+            onClick={handleZoomIn}
+          >
+            <ZoomIn size={18} />
+          </button>
+          <button 
+            className="p-2 hover:bg-gray-50 transition-colors"
+            onClick={handleZoomOut}
+          >
+            <ZoomOut size={18} />
+          </button>
         </div>
       </div>
       

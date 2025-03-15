@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import Sidebar from '@/components/layout/Sidebar';
 import MapView from '@/components/map/MapView';
@@ -8,20 +8,25 @@ import { robots, fleetSummary } from '@/utils/mockData';
 import { 
   LocateFixed, 
   Layers, 
-  ZoomIn, 
-  ZoomOut, 
   RefreshCw,
   Truck,
   Battery,
   AlertTriangle,
   Edit,
-  Eye
+  Eye,
+  Loader2
 } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
+import { useVDA5050 } from '@/hooks/use-vda5050';
+import { Button } from '@/components/ui/button';
 
 export default function Map() {
   const [editMode, setEditMode] = useState(false);
   const [showBackgroundMap, setShowBackgroundMap] = useState(true);
   const [showPaths, setShowPaths] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  const { robotStates, isInitialized } = useVDA5050();
   
   // Add page transition effect
   useEffect(() => {
@@ -29,6 +34,45 @@ export default function Map() {
     return () => {
       document.body.classList.remove('page-transition');
     };
+  }, []);
+
+  // Toggle edit mode
+  const toggleEditMode = useCallback(() => {
+    setEditMode(prev => !prev);
+    toast({
+      title: editMode ? "View mode activated" : "Edit mode activated",
+      description: editMode 
+        ? "You can now navigate the map" 
+        : "You can now edit navigation nodes and paths"
+    });
+  }, [editMode]);
+
+  // Toggle ROS map
+  const toggleRosMap = useCallback(() => {
+    setShowBackgroundMap(prev => !prev);
+    toast({
+      title: showBackgroundMap ? "ROS map hidden" : "ROS map visible",
+    });
+  }, [showBackgroundMap]);
+
+  // Toggle paths
+  const togglePaths = useCallback(() => {
+    setShowPaths(prev => !prev);
+    toast({
+      title: showPaths ? "Paths hidden" : "Paths visible",
+    });
+  }, [showPaths]);
+
+  // Refresh map data
+  const refreshMap = useCallback(() => {
+    setIsLoading(true);
+    setTimeout(() => {
+      setIsLoading(false);
+      toast({
+        title: "Map refreshed",
+        description: "Latest robot positions and map data loaded"
+      });
+    }, 1500);
   }, []);
 
   return (
@@ -49,13 +93,14 @@ export default function Map() {
               </div>
               
               <div className="flex items-center space-x-2">
-                <button 
-                  onClick={() => setEditMode(!editMode)}
-                  className={`px-3 py-1.5 rounded-md flex items-center text-sm ${editMode ? 'bg-primary text-white' : 'subtle-glass'}`}
+                <Button 
+                  onClick={toggleEditMode}
+                  variant={editMode ? "default" : "outline"}
+                  className="flex items-center"
                 >
                   {editMode ? <Eye size={16} className="mr-1.5" /> : <Edit size={16} className="mr-1.5" />}
                   {editMode ? 'View Mode' : 'Edit Mode'}
-                </button>
+                </Button>
               </div>
             </div>
           </motion.div>
@@ -106,35 +151,40 @@ export default function Map() {
             className="mt-4 flex justify-between items-center"
           >
             <div className="flex gap-2">
-              <button 
-                className="subtle-glass px-3 py-1.5 rounded-md flex items-center text-sm"
-                onClick={() => setShowPaths(!showPaths)}
+              <Button 
+                variant="outline"
+                size="sm"
+                className="flex items-center"
+                onClick={togglePaths}
               >
                 <Layers size={16} className="mr-1.5" />
                 {showPaths ? 'Hide Paths' : 'Show Paths'}
-              </button>
+              </Button>
               
-              <button 
-                className="subtle-glass px-3 py-1.5 rounded-md flex items-center text-sm"
-                onClick={() => setShowBackgroundMap(!showBackgroundMap)}
+              <Button 
+                variant="outline"
+                size="sm"
+                className="flex items-center"
+                onClick={toggleRosMap}
               >
                 <LocateFixed size={16} className="mr-1.5" />
                 {showBackgroundMap ? 'Hide ROS Map' : 'Show ROS Map'}
-              </button>
+              </Button>
               
-              <button className="subtle-glass px-3 py-1.5 rounded-md flex items-center text-sm">
-                <RefreshCw size={16} className="mr-1.5" />
+              <Button 
+                variant="outline"
+                size="sm"
+                className="flex items-center"
+                onClick={refreshMap}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <Loader2 size={16} className="mr-1.5 animate-spin" />
+                ) : (
+                  <RefreshCw size={16} className="mr-1.5" />
+                )}
                 Refresh
-              </button>
-            </div>
-            
-            <div className="flex">
-              <button className="subtle-glass px-2 py-1.5 rounded-l-md border-r border-white/20">
-                <ZoomIn size={16} />
-              </button>
-              <button className="subtle-glass px-2 py-1.5 rounded-r-md">
-                <ZoomOut size={16} />
-              </button>
+              </Button>
             </div>
           </motion.div>
           
