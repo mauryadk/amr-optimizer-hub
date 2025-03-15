@@ -10,7 +10,8 @@ import {
   ChevronLeft, 
   ChevronRight,
   Activity,
-  BatteryMedium
+  BatteryMedium,
+  FileText
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -19,6 +20,7 @@ const navItems = [
   { name: 'Robots', path: '/robots', icon: Truck },
   { name: 'Map', path: '/map', icon: Map },
   { name: 'Tasks', path: '/tasks', icon: ListChecks },
+  { name: 'Documentation', path: '/documentation', icon: FileText },
   { name: 'Settings', path: '/settings', icon: Settings }
 ];
 
@@ -34,12 +36,12 @@ export default function Sidebar() {
     >
       <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
         <div className={cn("flex items-center", collapsed && "justify-center w-full")}>
-          <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-md bg-primary/20 text-primary">
+          <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-md bg-gradient-to-r from-blue-600 to-blue-800 text-white">
             <Activity className="w-6 h-6" />
           </div>
           {!collapsed && (
             <span className="ml-2 text-lg font-semibold text-sidebar-foreground">
-              AMR Fleet
+              Anzo Controls
             </span>
           )}
         </div>
@@ -62,7 +64,7 @@ export default function Sidebar() {
                   "flex items-center py-2 px-3 rounded-md transition-all-200",
                   collapsed ? "justify-center" : "",
                   isActive 
-                    ? "bg-sidebar-accent text-primary" 
+                    ? "bg-sidebar-accent text-primary bg-gradient-to-r from-primary/20 to-transparent" 
                     : "text-sidebar-foreground hover:bg-sidebar-accent/50"
                 )}
               >

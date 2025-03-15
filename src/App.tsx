@@ -9,7 +9,9 @@ import Robots from "./pages/Robots";
 import Map from "./pages/Map";
 import Tasks from "./pages/Tasks";
 import Settings from "./pages/Settings";
+import Documentation from "./pages/Documentation";
 import NotFound from "./pages/NotFound";
+import Footer from "./components/layout/Footer";
 
 const queryClient = new QueryClient();
 
@@ -25,8 +27,10 @@ const App = () => (
           <Route path="/map" element={<Map />} />
           <Route path="/tasks" element={<Tasks />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/documentation" element={<Documentation />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
+        <Footer />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
