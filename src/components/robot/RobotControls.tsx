@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { 
   Pause, 
@@ -337,7 +336,7 @@ export default function RobotControls({ robot }: RobotControlsProps) {
                         ) : (
                           <div className="mt-2 text-xs">
                             <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                              {Object.entries(diagnosticsData.results).map(([key, value]) => (
+                              {Object.entries(diagnosticsData.results || {}).map(([key, value]) => (
                                 <div key={key} className="flex justify-between">
                                   <span className="text-gray-600 capitalize">{key}:</span>
                                   <span className={`font-medium ${
@@ -347,7 +346,7 @@ export default function RobotControls({ robot }: RobotControlsProps) {
                                       ? 'text-yellow-600' 
                                       : 'text-red-600'
                                   }`}>
-                                    {value}
+                                    {String(value)}
                                   </span>
                                 </div>
                               ))}
