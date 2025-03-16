@@ -13,7 +13,6 @@ import Documentation from "./pages/Documentation";
 import NotFound from "./pages/NotFound";
 import Footer from "./components/layout/Footer";
 import Header from "./components/layout/Header";
-import Sidebar from "./components/layout/Sidebar";
 
 const queryClient = new QueryClient();
 
@@ -24,10 +23,9 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <div className="flex h-screen bg-gray-50">
-          <Sidebar />
           <div className="flex flex-col flex-1 overflow-hidden">
             <Header />
-            <main className="flex-1 overflow-auto p-6">
+            <main className="flex-1 overflow-auto">
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/robots" element={<Robots />} />

@@ -36,13 +36,19 @@ export default function Sidebar() {
     >
       <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
         <div className={cn("flex items-center", collapsed && "justify-center w-full")}>
-          <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-md bg-gradient-to-r from-blue-600 to-blue-800 text-white">
-            <Activity className="w-6 h-6" />
-          </div>
-          {!collapsed && (
-            <span className="ml-2 text-lg font-semibold text-sidebar-foreground">
-              Anzo Controls
-            </span>
+          {collapsed ? (
+            <Activity className="w-6 h-6 text-primary" />
+          ) : (
+            <div className="flex items-center">
+              <img 
+                src="https://www.anzocontrols.com/wp-content/uploads/2022/11/Client_logo_anzo-removebg-preview-2.png" 
+                alt="Anzo Controls"
+                className="h-8 mr-2" 
+              />
+              <span className="text-lg font-semibold text-sidebar-foreground">
+                Controls
+              </span>
+            </div>
           )}
         </div>
         <button
@@ -92,6 +98,12 @@ export default function Sidebar() {
             {collapsed ? "" : "4"}/{collapsed ? "" : "6"}
           </div>
         </div>
+      </div>
+      
+      <div className="p-2 text-center text-xs text-gray-500 border-t border-sidebar-border">
+        {!collapsed && (
+          <div>© {new Date().getFullYear()} Anzo Controls</div>
+        )}
       </div>
     </aside>
   );

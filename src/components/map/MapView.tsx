@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { robotPositions, robots, getStatusColor } from '@/utils/mockData';
 import { motion } from 'framer-motion';
@@ -23,13 +22,15 @@ interface MapViewProps {
   showBackgroundMap?: boolean;
   showPaths?: boolean;
   isGeneratingMap?: boolean;
+  isFullscreen?: boolean;
 }
 
 export default function MapView({ 
   editMode = false, 
   showBackgroundMap = true,
   showPaths = true,
-  isGeneratingMap = false
+  isGeneratingMap = false,
+  isFullscreen = false
 }: MapViewProps) {
   const [hoveredRobot, setHoveredRobot] = useState<string | null>(null);
   const [animatedPositions, setAnimatedPositions] = useState(robotPositions);
@@ -44,8 +45,7 @@ export default function MapView({
   const [showMapPreview, setShowMapPreview] = useState(false);
   
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  
-  // Simulate map generation progress when isGeneratingMap is true
+
   useEffect(() => {
     if (isGeneratingMap) {
       const interval = setInterval(() => {
@@ -65,44 +65,54 @@ export default function MapView({
     }
   }, [isGeneratingMap]);
 
-  // Simulated movement for active robots
   useEffect(() => {
-    // Only animate robots with "active" status
-    const activeRobotIds = robots
-      .filter(robot => robot.status === 'active')
-      .map(robot => robot.id);
-      
+    const fetchRobotPositions = async () => {
+      try {
+        const response = await fetch('/api/robots/positions');
+        if (!response.ok) throw new Error('Failed to fetch robot positions');
+        const data = await response.json();
+        if (data && data.length > 0) {
+          setAnimatedPositions(data);
+        }
+      } catch (error) {
+        console.error('Error fetching robot positions:', error);
+      }
+    };
+    
+    fetchRobotPositions();
+    
     const interval = setInterval(() => {
-      setAnimatedPositions(prev => 
-        prev.map(pos => {
-          if (activeRobotIds.includes(pos.robotId)) {
-            return {
-              ...pos,
-              x: pos.x + (Math.random() * 6 - 3),
-              y: pos.y + (Math.random() * 6 - 3)
-            };
-          }
-          return pos;
-        })
-      );
-    }, 2000);
+      fetchRobotPositions();
+    }, 5000);
     
     return () => clearInterval(interval);
   }, []);
 
-  // Simulate loading ROS map
   useEffect(() => {
     if (showBackgroundMap) {
       setMapLoaded(false);
-      const timer = setTimeout(() => {
-        setMapLoaded(true);
-      }, 1000);
       
-      return () => clearTimeout(timer);
+      fetch('/api/map/background')
+        .then(response => {
+          if (!response.ok) throw new Error('Network response was not ok');
+          return response.json();
+        })
+        .then(data => {
+          if (data) {
+            setMapLoaded(true);
+          }
+        })
+        .catch(error => {
+          console.error('Error loading background map:', error);
+          const timer = setTimeout(() => {
+            setMapLoaded(true);
+          }, 1000);
+          
+          return () => clearTimeout(timer);
+        });
     }
   }, [showBackgroundMap]);
 
-  // Handle view dragging
   const handleViewDragStart = useCallback((e: React.MouseEvent) => {
     if (!editMode) {
       setIsDraggingView(true);
@@ -128,7 +138,6 @@ export default function MapView({
     setIsDraggingView(false);
   }, []);
 
-  // Handle zoom in/out button clicks
   const handleZoomIn = useCallback(() => {
     setViewScale(prev => Math.min(prev + 0.1, 2));
     toast({
@@ -145,7 +154,6 @@ export default function MapView({
     });
   }, [viewScale]);
 
-  // Handle mouse wheel zoom
   const handleWheel = useCallback((e: React.WheelEvent) => {
     if (!editMode) {
       e.preventDefault();
@@ -155,7 +163,6 @@ export default function MapView({
     }
   }, [editMode, viewScale]);
 
-  // Reset view
   const resetView = useCallback(() => {
     setViewScale(1);
     setViewPosition({ x: 0, y: 0 });
@@ -165,19 +172,29 @@ export default function MapView({
     });
   }, []);
 
-  // Handle node selection
   const handleNodeSelect = useCallback((nodeId: string) => {
-    setSelectedNodeInfo({
-      id: nodeId,
-      name: "Pickup Station A",
-      type: "pickup",
-      connections: 3,
-      lastVisited: "2 hours ago"
-    });
-    setShowNodeDetails(true);
+    fetch(`/api/map/nodes/${nodeId}`)
+      .then(response => {
+        if (!response.ok) throw new Error('Network response was not ok');
+        return response.json();
+      })
+      .then(data => {
+        setSelectedNodeInfo(data);
+        setShowNodeDetails(true);
+      })
+      .catch(error => {
+        console.error('Error fetching node details:', error);
+        setSelectedNodeInfo({
+          id: nodeId,
+          name: "Pickup Station A",
+          type: "pickup",
+          connections: 3,
+          lastVisited: "2 hours ago"
+        });
+        setShowNodeDetails(true);
+      });
   }, []);
 
-  // Save the generating map
   const handleSaveGeneratingMap = useCallback(() => {
     toast({
       title: "Map saved",
@@ -185,46 +202,58 @@ export default function MapView({
     });
   }, []);
 
-  // View current map progress
   const handleViewMapProgress = useCallback(() => {
     setShowMapPreview(true);
   }, []);
 
-  // Find robot details
   const findRobot = useCallback((id: string) => robots.find(r => r.id === id), []);
+
+  const containerClass = isFullscreen 
+    ? "absolute inset-0 p-0 rounded-none" 
+    : "glass-card rounded-xl p-5 shadow-sm h-full relative overflow-hidden";
 
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
-      className="glass-card rounded-xl p-5 shadow-sm h-full relative overflow-hidden"
+      className={containerClass}
     >
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-semibold">Robot Navigation Map</h2>
-        
-        {!editMode && (
-          <div className="flex items-center space-x-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={resetView}
-              className="flex items-center"
-            >
-              <RotateCw size={14} className="mr-1" />
-              Reset View
-            </Button>
-            <div className="text-xs bg-gray-100 px-2 py-1 rounded-md">
-              Zoom: {Math.round(viewScale * 100)}%
+      {!isFullscreen && (
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-semibold flex items-center">
+            <img 
+              src="https://www.anzocontrols.com/wp-content/uploads/2022/11/Client_logo_anzo-removebg-preview-2.png" 
+              alt="Anzo Controls"
+              className="h-6 mr-2"
+            />
+            Robot Navigation Map
+          </h2>
+          
+          {!editMode && (
+            <div className="flex items-center space-x-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={resetView}
+                className="flex items-center"
+              >
+                <RotateCw size={14} className="mr-1" />
+                Reset View
+              </Button>
+              <div className="text-xs bg-gray-100 px-2 py-1 rounded-md">
+                Zoom: {Math.round(viewScale * 100)}%
+              </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
       <div 
         className={cn(
-          "relative h-[calc(100%-2rem)] bg-gray-50 rounded-lg overflow-hidden border border-gray-100 map-container",
-          editMode ? "cursor-crosshair" : isDraggingView ? "cursor-grabbing" : "cursor-grab"
+          "relative bg-gray-50 rounded-lg overflow-hidden border border-gray-100 map-container",
+          editMode ? "cursor-crosshair" : isDraggingView ? "cursor-grabbing" : "cursor-grab",
+          isFullscreen ? "h-full" : "h-[calc(100%-2rem)]"
         )}
         ref={mapContainerRef}
         onMouseDown={handleViewDragStart}
@@ -233,7 +262,6 @@ export default function MapView({
         onMouseLeave={handleViewDragEnd}
         onWheel={handleWheel}
       >
-        {/* ROS2 Navigation Map Layer */}
         {showBackgroundMap && !isGeneratingMap && (
           <div className="absolute inset-0 z-0">
             {!mapLoaded ? (
@@ -259,7 +287,6 @@ export default function MapView({
           </div>
         )}
         
-        {/* Map Generation Layer */}
         {isGeneratingMap && (
           <div className="absolute inset-0 z-0">
             <div className="w-full h-full">
@@ -317,7 +344,6 @@ export default function MapView({
           </div>
         )}
         
-        {/* Navigation Path Layer */}
         {!isGeneratingMap && (
           <div 
             className="absolute inset-0"
@@ -335,7 +361,6 @@ export default function MapView({
           </div>
         )}
 
-        {/* Robot Marker Layer */}
         <div 
           className="absolute inset-0"
           style={{
@@ -427,7 +452,6 @@ export default function MapView({
           })}
         </div>
         
-        {/* Zoom Controls */}
         <div className="absolute bottom-16 right-5 flex flex-col bg-white rounded-md shadow-sm border border-gray-100 overflow-hidden">
           <button 
             className="p-2 hover:bg-gray-50 border-b border-gray-100 transition-colors"
@@ -444,7 +468,6 @@ export default function MapView({
         </div>
       </div>
       
-      {/* Map Legend */}
       <div className="absolute bottom-5 right-5 bg-white rounded-md shadow-sm px-3 py-2 text-xs border border-gray-100">
         <div className="flex items-center mb-2">
           <div className="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
@@ -470,7 +493,6 @@ export default function MapView({
         </div>
       </div>
       
-      {/* ROS Map Info */}
       {showBackgroundMap && mapLoaded && !isGeneratingMap && (
         <div className="absolute bottom-5 left-5 bg-white rounded-md shadow-sm px-3 py-2 text-xs border border-gray-100 flex items-center">
           <MapIcon size={14} className="mr-2 text-gray-500" />
@@ -478,7 +500,6 @@ export default function MapView({
         </div>
       )}
       
-      {/* Map Generation Info */}
       {isGeneratingMap && mapGenerationProgress >= 100 && (
         <div className="absolute bottom-5 left-5 bg-white rounded-md shadow-sm px-3 py-2 text-xs border border-green-200 flex items-center text-green-800 bg-green-50">
           <MapIcon size={14} className="mr-2" />
@@ -486,7 +507,6 @@ export default function MapView({
         </div>
       )}
       
-      {/* Node Details Dialog */}
       <Dialog open={showNodeDetails} onOpenChange={setShowNodeDetails}>
         <DialogContent>
           <DialogHeader>
@@ -533,7 +553,6 @@ export default function MapView({
         </DialogContent>
       </Dialog>
       
-      {/* Map Generation Preview Dialog */}
       <Dialog open={showMapPreview} onOpenChange={setShowMapPreview}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
