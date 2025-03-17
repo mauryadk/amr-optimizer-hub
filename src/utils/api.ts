@@ -1,5 +1,8 @@
-// This file contains mock implementations of API endpoints
-// In a real application, these would be replaced with actual API calls
+// This file contains implementations of API endpoints
+// It will use Supabase for storage when available, or fall back to mock data
+
+import { supabase } from '@/integrations/supabase/client';
+import { robotPositions } from './mockData';
 
 // Intercept fetch calls to our mock API endpoints
 const originalFetch = window.fetch;
@@ -15,16 +18,75 @@ window.fetch = function(input, init) {
   return originalFetch.apply(this, [input, init]);
 };
 
-function handleMockApi(url, init) {
+async function handleMockApi(url, init) {
   console.log(`Mock API call: ${url}`);
   
-  // Simulate network delay
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const response = getMockResponse(url, init);
-      resolve(response);
-    }, 800); // Simulate network delay of 800ms
-  });
+  try {
+    // Try to use Supabase when available
+    const response = await getSupabaseResponse(url, init);
+    return response;
+  } catch (error) {
+    console.warn("Falling back to mock data:", error.message);
+    
+    // Simulate network delay
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const response = getMockResponse(url, init);
+        resolve(response);
+      }, 800);
+    });
+  }
+}
+
+async function getSupabaseResponse(url, init) {
+  // Map endpoints to Supabase edge functions
+  if (url === '/api/map/refresh') {
+    const { data, error } = await supabase.functions.invoke('map-refresh', {
+      body: { timestamp: new Date().toISOString() }
+    });
+    
+    if (error) throw new Error(error.message);
+    return createSuccessResponse(data);
+  }
+  
+  if (url === '/api/map/save') {
+    const body = init && init.body ? JSON.parse(init.body) : {};
+    const { data, error } = await supabase.functions.invoke('map-save', {
+      body: { 
+        timestamp: new Date().toISOString(),
+        ...body
+      }
+    });
+    
+    if (error) throw new Error(error.message);
+    return createSuccessResponse(data);
+  }
+  
+  if (url === '/api/tasks') {
+    const { data, error } = await supabase.functions.invoke('tasks', {
+      body: { operation: 'list' }
+    });
+    
+    if (error) throw new Error(error.message);
+    return createSuccessResponse(data);
+  }
+  
+  if (url.includes('/api/fleet/optimize')) {
+    // For path optimization and conflict resolution
+    const body = init && init.body ? JSON.parse(init.body) : {};
+    const { data, error } = await supabase.functions.invoke('fleet-management', {
+      body: { 
+        operation: 'optimizeFleet',
+        ...body
+      }
+    });
+    
+    if (error) throw new Error(error.message);
+    return createSuccessResponse(data);
+  }
+  
+  // If we get here, we don't have a Supabase implementation for this endpoint
+  throw new Error("No Supabase implementation for " + url);
 }
 
 function getMockResponse(url, init) {
@@ -67,9 +129,6 @@ function getMockResponse(url, init) {
   
   // Robot endpoints
   if (url === '/api/robots/positions') {
-    // Import directly to avoid circular dependencies
-    const { robotPositions } = require('./mockData');
-    
     // Add some randomness to the positions
     const updatedPositions = robotPositions.map(pos => ({
       ...pos,

@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import Sidebar from '@/components/layout/Sidebar';
 import MapView from '@/components/map/MapView';
 import MapEditor from '@/components/map/MapEditor';
-import { robots, fleetSummary } from '@/utils/mockData';
+import { fleetSummary } from '@/utils/mockData';
 import { 
   LocateFixed, 
   Layers, 
@@ -30,6 +30,8 @@ import { Button } from '@/components/ui/button';
 import MapDistribution from '@/components/map/MapDistribution';
 import NewMapGeneration from '@/components/map/NewMapGeneration';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 
 export default function Map() {
   const [editMode, setEditMode] = useState(false);
@@ -40,15 +42,39 @@ export default function Map() {
   const [showDistributionDialog, setShowDistributionDialog] = useState(false);
   const [showGenerationDialog, setShowGenerationDialog] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const fullscreenRef = useRef(null);
+  const fullscreenRef = useRef<HTMLDivElement>(null);
   
   const { robotStates, isInitialized } = useVDA5050();
+
+  // Load AMR data from Supabase
+  const { data: amrData, isLoading: isLoadingAMR } = useQuery({
+    queryKey: ['amr-data'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('AMR')
+        .select('*');
+      
+      if (error) throw error;
+      return data || [];
+    }
+  });
   
   // Add page transition effect
   useEffect(() => {
     document.body.classList.add('page-transition');
     return () => {
       document.body.classList.remove('page-transition');
+    };
+  }, []);
+
+  // Exit fullscreen when component unmounts
+  useEffect(() => {
+    return () => {
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(err => {
+          console.error("Error exiting fullscreen:", err);
+        });
+      }
     };
   }, []);
 
@@ -123,61 +149,69 @@ export default function Map() {
   // Refresh map data
   const refreshMap = useCallback(() => {
     setIsLoading(true);
-    // Simulate API call to backend
-    fetch('/api/map/refresh')
-      .then(response => {
-        if (!response.ok) throw new Error('Network response was not ok');
-        return response.json();
-      })
-      .catch(error => {
-        console.error('Error refreshing map:', error);
-        // Fall back to mock data if API fails
-        setTimeout(() => {
-          setIsLoading(false);
-          toast({
-            title: "Map refreshed",
-            description: "Latest robot positions and map data loaded"
-          });
-        }, 1500);
+    
+    // Use Supabase for data refresh
+    supabase.functions.invoke('map-refresh', { 
+      body: { timestamp: new Date().toISOString() }
+    })
+    .then(response => {
+      setIsLoading(false);
+      if (response.error) throw new Error(response.error.message);
+      
+      toast({
+        title: "Map refreshed",
+        description: "Latest robot positions and map data loaded"
       });
+    })
+    .catch(error => {
+      console.error('Error refreshing map:', error);
+      setIsLoading(false);
+      
+      toast({
+        title: "Error refreshing map",
+        description: error.message,
+        variant: "destructive"
+      });
+    });
   }, []);
 
   // Save current map
   const saveMap = useCallback(() => {
     setIsLoading(true);
-    // Simulate API call to backend
-    fetch('/api/map/save', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ 
+    
+    // Use Supabase for saving map
+    supabase.functions.invoke('map-save', { 
+      body: { 
         timestamp: new Date().toISOString(),
         user: 'admin'
-      }),
+      }
     })
-      .then(response => {
-        if (!response.ok) throw new Error('Network response was not ok');
-        return response.json();
-      })
-      .catch(error => {
-        console.error('Error saving map:', error);
-        // Fall back to mock behavior if API fails
-        setTimeout(() => {
-          setIsLoading(false);
-          toast({
-            title: "Map saved",
-            description: "Current map has been saved to the database"
-          });
-        }, 1000);
+    .then(response => {
+      setIsLoading(false);
+      if (response.error) throw new Error(response.error.message);
+      
+      toast({
+        title: "Map saved",
+        description: "Current map has been saved to the database"
       });
+    })
+    .catch(error => {
+      console.error('Error saving map:', error);
+      setIsLoading(false);
+      
+      toast({
+        title: "Error saving map",
+        description: error.message,
+        variant: "destructive"
+      });
+    });
   }, []);
 
   if (isFullscreen) {
     return (
       <div 
         ref={fullscreenRef}
-        className="h-screen w-screen bg-black relative"
+        className="absolute inset-0 bg-black w-screen h-screen z-50 overflow-hidden"
       >
         <div className="absolute top-4 right-4 z-50 flex gap-2">
           <Button 
@@ -229,7 +263,7 @@ export default function Map() {
                   className="h-12 object-contain"
                 />
                 <div>
-                  <h1 className="text-2xl font-bold">Fleet Map</h1>
+                  <h1 className="text-2xl font-bold font-sans">Fleet Map</h1>
                   <p className="text-gray-500 text-sm">Visualize and edit robot navigation paths</p>
                 </div>
               </div>
@@ -433,10 +467,10 @@ export default function Map() {
             </motion.div>
           )}
           
-          {/* Main Map View */}
+          {/* Main Map View - Larger Size */}
           <div 
             ref={fullscreenRef} 
-            className="mt-3 h-[calc(100vh-220px)]"
+            className="mt-3 h-[calc(100vh-200px)]"
           >
             <MapView 
               editMode={editMode} 

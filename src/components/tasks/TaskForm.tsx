@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { robots } from '@/utils/mockData';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   CalendarClock, 
   AlignLeft, 
@@ -11,6 +12,7 @@ import {
   AlertTriangle,
   X
 } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 
 export default function TaskForm() {
   const [title, setTitle] = useState('');
@@ -19,19 +21,50 @@ export default function TaskForm() {
   const [priority, setPriority] = useState('medium');
   const [robotId, setRobotId] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, this would submit the task to an API
-    console.log({ title, description, location, priority, robotId });
+    setIsSubmitting(true);
     
-    // Reset form and close
-    setTitle('');
-    setDescription('');
-    setLocation('');
-    setPriority('medium');
-    setRobotId('');
-    setIsFormOpen(false);
+    try {
+      // Call the Supabase edge function
+      const { data, error } = await supabase.functions.invoke('tasks', {
+        body: {
+          title,
+          description,
+          priority,
+          robotId: robotId || undefined,
+          startLocation: location || undefined,
+          endLocation: location || undefined
+        }
+      });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Task created",
+        description: "New task has been created successfully"
+      });
+      
+      // Reset form and close
+      setTitle('');
+      setDescription('');
+      setLocation('');
+      setPriority('medium');
+      setRobotId('');
+      setIsFormOpen(false);
+    } catch (error) {
+      console.error("Error creating task:", error);
+      
+      toast({
+        title: "Error creating task",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
   
   // Only show active or idle robots as available
@@ -49,7 +82,7 @@ export default function TaskForm() {
           <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
             <CalendarClock size={24} className="text-primary" />
           </div>
-          <h3 className="text-lg font-medium">Create New Task</h3>
+          <h3 className="text-lg font-medium font-sans">Create New Task</h3>
           <p className="text-sm text-gray-500 mt-1">Assign tasks to your robots</p>
         </motion.button>
       ) : (
@@ -60,7 +93,7 @@ export default function TaskForm() {
           className="glass-card rounded-xl p-5 shadow-sm h-full"
         >
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold">New Task Assignment</h3>
+            <h3 className="text-lg font-semibold font-sans">New Task Assignment</h3>
             <button 
               onClick={() => setIsFormOpen(false)}
               className="p-1 hover:bg-gray-100 rounded-full transition-colors"
@@ -187,14 +220,16 @@ export default function TaskForm() {
                   type="button"
                   onClick={() => setIsFormOpen(false)}
                   className="px-4 py-2 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+                  disabled={isSubmitting}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-md bg-primary text-white hover:bg-primary/90 transition-colors"
+                  className={`px-4 py-2 rounded-md bg-primary text-white hover:bg-primary/90 transition-colors ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
+                  disabled={isSubmitting}
                 >
-                  Create Task
+                  {isSubmitting ? 'Creating...' : 'Create Task'}
                 </button>
               </div>
             </div>

@@ -57,6 +57,11 @@
     font-smooth: auto;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    font-family: 'Inter', sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Poppins', sans-serif;
   }
 }
 
@@ -146,4 +151,14 @@
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* Prevent fullscreen issues */
+.fullscreen-map {
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 9999;
 }

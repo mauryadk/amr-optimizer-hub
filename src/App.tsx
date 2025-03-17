@@ -14,7 +14,15 @@ import NotFound from "./pages/NotFound";
 import Footer from "./components/layout/Footer";
 import Header from "./components/layout/Header";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+      staleTime: 10 * 1000,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
