@@ -33,6 +33,7 @@ export default function Header({ pageTitle = "Dashboard", userProfile }: HeaderP
   };
 
   const navItems = [
+    { label: "Dashboard", href: "/dashboard" },
     { label: "Map", href: "/map" },
     { label: "Robots", href: "/robots" },
     { label: "Tasks", href: "/tasks" },
@@ -42,22 +43,22 @@ export default function Header({ pageTitle = "Dashboard", userProfile }: HeaderP
 
   return (
     <header className="bg-white border-b border-gray-200 z-10">
-      <div className="px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between">
+      <div className="px-3 sm:px-4 lg:px-6">
+        <div className="flex h-14 items-center justify-between">
           {/* Logo and page title */}
           <div className="flex items-center">
-            <Link to="/" className="flex items-center">
+            <Link to="/dashboard" className="flex items-center">
               <img 
                 src="https://www.anzocontrols.com/wp-content/uploads/2022/11/Client_logo_anzo-removebg-preview-2.png" 
                 alt="Anzo Controls" 
-                className="h-8 mr-3" 
+                className="h-8 mr-2" 
               />
-              <span className="hidden md:block text-lg font-semibold text-gray-900">
+              <span className="hidden md:block text-base font-semibold text-gray-900">
                 Fleet Management
               </span>
             </Link>
-            <div className="hidden md:block ml-8">
-              <h1 className="text-xl font-medium text-gray-800">{pageTitle}</h1>
+            <div className="hidden md:block ml-6">
+              <h1 className="text-lg font-medium text-gray-800">{pageTitle}</h1>
             </div>
           </div>
 
@@ -70,9 +71,9 @@ export default function Header({ pageTitle = "Dashboard", userProfile }: HeaderP
               aria-label="Toggle menu"
             >
               {isMobileMenuOpen ? (
-                <X className="h-6 w-6" />
+                <X className="h-5 w-5" />
               ) : (
-                <Menu className="h-6 w-6" />
+                <Menu className="h-5 w-5" />
               )}
             </Button>
           </div>
@@ -83,7 +84,7 @@ export default function Header({ pageTitle = "Dashboard", userProfile }: HeaderP
               <Link 
                 key={item.href}
                 to={item.href}
-                className="px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 transition-colors"
+                className="px-2 py-1.5 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 transition-colors"
               >
                 {item.label}
               </Link>
@@ -98,7 +99,7 @@ export default function Header({ pageTitle = "Dashboard", userProfile }: HeaderP
                     className="ml-2 flex items-center space-x-2 text-left"
                   >
                     <UserCircle className="h-5 w-5" />
-                    <span className="max-w-[100px] truncate">
+                    <span className="max-w-[100px] truncate text-sm">
                       {userProfile.full_name || userProfile.email || "User"}
                     </span>
                   </Button>
@@ -142,12 +143,12 @@ export default function Header({ pageTitle = "Dashboard", userProfile }: HeaderP
         "md:hidden border-b border-gray-200 bg-white",
         isMobileMenuOpen ? "block" : "hidden"
       )}>
-        <div className="space-y-1 px-2 pb-3 pt-2">
+        <div className="space-y-0.5 px-2 pb-3 pt-2">
           {navItems.map((item) => (
             <Link
               key={item.href}
               to={item.href}
-              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100"
+              className="block px-3 py-1.5 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100"
               onClick={() => setIsMobileMenuOpen(false)}
             >
               {item.label}
@@ -155,7 +156,7 @@ export default function Header({ pageTitle = "Dashboard", userProfile }: HeaderP
           ))}
           <Button 
             variant="ghost" 
-            className="w-full justify-start px-3 py-2 text-base font-medium text-gray-700 hover:bg-gray-100"
+            className="w-full justify-start px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100"
             onClick={handleSignOut}
           >
             <LogOut className="mr-2 h-4 w-4" />

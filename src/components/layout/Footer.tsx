@@ -53,14 +53,14 @@ export default function Footer() {
   };
 
   return (
-    <footer className="bg-gradient-to-r from-slate-900 to-slate-800 text-slate-300 py-5 px-6 text-sm">
+    <footer className="bg-gradient-to-r from-slate-900 to-slate-800 text-slate-300 py-2 px-4 text-xs">
       <div className="container mx-auto">
         <div className="flex flex-col md:flex-row justify-between items-center">
-          <div className="flex items-center mb-4 md:mb-0">
-            <div className="mr-3">
+          <div className="flex items-center mb-2 md:mb-0">
+            <div className="mr-2">
               <motion.svg 
-                width="32" 
-                height="32" 
+                width="24" 
+                height="24" 
                 viewBox="0 0 32 32" 
                 fill="none" 
                 xmlns="http://www.w3.org/2000/svg"
@@ -75,81 +75,81 @@ export default function Footer() {
               </motion.svg>
             </div>
             <div>
-              <div className="text-white font-semibold">Anzo Controls</div>
-              <div className="text-xs text-slate-400">Industrial Automation Solutions</div>
+              <div className="text-white font-semibold text-xs">Anzo Controls</div>
+              <div className="text-[10px] text-slate-400">Industrial Automation</div>
             </div>
           </div>
           
-          <div className="flex flex-col items-center mb-4 md:mb-0">
-            <div className="flex space-x-4 mb-2">
+          <div className="flex flex-col items-center mb-2 md:mb-0">
+            <div className="flex space-x-3 mb-1">
               <motion.a 
                 href="#" 
                 className="text-slate-400 hover:text-white transition-colors"
                 whileHover={{ scale: 1.1 }}
               >
-                <Github size={18} />
+                <Github size={14} />
               </motion.a>
               <motion.a 
                 href="#" 
                 className="text-slate-400 hover:text-white transition-colors"
                 whileHover={{ scale: 1.1 }}
               >
-                <Twitter size={18} />
+                <Twitter size={14} />
               </motion.a>
               <motion.a 
                 href="#" 
                 className="text-slate-400 hover:text-white transition-colors"
                 whileHover={{ scale: 1.1 }}
               >
-                <Linkedin size={18} />
+                <Linkedin size={14} />
               </motion.a>
             </div>
-            <div className="text-slate-500 text-xs flex items-center">
+            <div className="text-slate-500 text-[10px] flex items-center">
               <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse mr-1.5"></span>
               System Uptime: {formatUptime(uptime)}
             </div>
           </div>
           
           <div className="flex items-center">
-            <Copyright size={14} className="mr-1.5 text-slate-400" />
-            <span>Copyright {currentYear} Anzo Controls. All rights reserved.</span>
+            <Copyright size={12} className="mr-1 text-slate-400" />
+            <span className="text-[10px]">Copyright {currentYear} Anzo Controls</span>
           </div>
         </div>
         
-        <div className="mt-4 pt-4 border-t border-slate-800 flex flex-col md:flex-row items-center justify-between">
-          <div className="flex items-center mb-3 md:mb-0">
-            <Heart size={14} className="mr-1.5 text-red-400" />
-            <span className="text-slate-400">Made with passion for industrial automation</span>
+        <div className="mt-2 pt-2 border-t border-slate-800 flex flex-col md:flex-row items-center justify-between">
+          <div className="flex items-center mb-2 md:mb-0">
+            <Heart size={12} className="mr-1 text-red-400" />
+            <span className="text-slate-400 text-[10px]">Made for industrial automation</span>
           </div>
           
-          <div className="flex flex-wrap justify-center gap-x-4 gap-y-2">
+          <div className="flex flex-wrap justify-center gap-x-3 gap-y-1">
             <button 
-              className="text-slate-400 hover:text-white transition-colors text-xs flex items-center"
+              className="text-slate-400 hover:text-white transition-colors text-[10px] flex items-center"
               onClick={() => handleDocClick("API Documentation")}
             >
-              API Documentation
-              <ExternalLink size={12} className="ml-1" />
+              API Docs
+              <ExternalLink size={8} className="ml-1" />
             </button>
             <button 
-              className="text-slate-400 hover:text-white transition-colors text-xs flex items-center"
+              className="text-slate-400 hover:text-white transition-colors text-[10px] flex items-center"
               onClick={() => handleDocClick("User Manual")}
             >
-              User Manual
-              <ExternalLink size={12} className="ml-1" />
+              Manual
+              <ExternalLink size={8} className="ml-1" />
             </button>
             <button 
-              className="text-slate-400 hover:text-white transition-colors text-xs flex items-center"
+              className="text-slate-400 hover:text-white transition-colors text-[10px] flex items-center"
               onClick={() => handleDocClick("Terms of Service")}
             >
-              Terms of Service
-              <ExternalLink size={12} className="ml-1" />
+              Terms
+              <ExternalLink size={8} className="ml-1" />
             </button>
             <button 
-              className="text-slate-400 hover:text-white transition-colors text-xs flex items-center"
+              className="text-slate-400 hover:text-white transition-colors text-[10px] flex items-center"
               onClick={() => handleDocClick("Privacy Policy")}
             >
-              Privacy Policy
-              <ExternalLink size={12} className="ml-1" />
+              Privacy
+              <ExternalLink size={8} className="ml-1" />
             </button>
           </div>
         </div>

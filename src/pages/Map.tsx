@@ -7,7 +7,7 @@ export default function Map() {
 
   return (
     <div className="min-h-full flex flex-col">
-      <MapView isFullscreen={true} />
+      <MapView isFullscreen={false} />
     </div>
   );
 }

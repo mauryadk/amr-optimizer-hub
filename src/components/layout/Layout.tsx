@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import Header from "./Header";
 import Footer from "./Footer";
+import Sidebar from "./Sidebar";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function Layout() {
@@ -15,6 +16,8 @@ export default function Layout() {
     const path = location.pathname;
     if (path.includes("/map")) {
       setPageTitle("Map Navigation");
+    } else if (path.includes("/dashboard")) {
+      setPageTitle("Dashboard");
     } else if (path.includes("/robots")) {
       setPageTitle("Robot Fleet");
     } else if (path.includes("/tasks")) {
@@ -34,14 +37,12 @@ export default function Layout() {
     };
   }, [location]);
 
-  // Check if we're on the map page which should be fullscreen
-  const isMapPage = location.pathname === "/map";
-
   return (
     <div className="flex h-screen bg-gray-50">
+      <Sidebar />
       <div className="flex flex-col flex-1 overflow-hidden">
         <Header pageTitle={pageTitle} userProfile={profile} />
-        <main className={`flex-1 overflow-auto ${isMapPage ? 'p-0' : 'p-6'}`}>
+        <main className="flex-1 overflow-auto p-4">
           <Outlet />
         </main>
         <Footer />

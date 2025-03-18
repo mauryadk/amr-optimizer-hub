@@ -14,6 +14,7 @@ import Documentation from "./pages/Documentation";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import Layout from "@/components/layout/Layout";
+import Index from "./pages/Index";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -36,11 +37,12 @@ const App = () => (
             {/* Auth routes */}
             <Route path="/auth/*" element={<Auth />} />
             
-            {/* Redirect from index to map */}
-            <Route path="/" element={<Navigate to="/map" replace />} />
+            {/* Redirect from root to dashboard */}
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
             
             {/* Protected routes */}
             <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+              <Route path="/dashboard" element={<Index />} />
               <Route path="/map" element={<Map />} />
               <Route path="/robots" element={<Robots />} />
               <Route path="/tasks" element={<Tasks />} />
