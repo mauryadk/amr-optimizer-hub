@@ -28,19 +28,19 @@ export default function StatusCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration:.4, delay: delay * 0.1 }}
       className={cn(
-        "glass-card rounded-xl p-5 shadow-sm relative overflow-hidden",
+        "glass-card rounded-lg p-3 shadow-sm relative overflow-hidden",
         bgColor
       )}
     >
       <div className="flex justify-between items-start">
         <div>
-          <p className="text-sm font-medium text-gray-500">{title}</p>
-          <h3 className="text-2xl font-bold mt-1">{value}</h3>
+          <p className="text-xs font-medium text-gray-500">{title}</p>
+          <h3 className="text-xl font-bold mt-0.5">{value}</h3>
           
           {trend && (
-            <div className="flex items-center mt-2">
+            <div className="flex items-center mt-1">
               <span className={cn(
-                "text-xs font-medium px-1.5 py-0.5 rounded",
+                "text-xs font-medium px-1 py-0.5 rounded",
                 trend.isPositive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
               )}>
                 {trend.isPositive ? '↑' : '↓'} {trend.value}%
@@ -49,12 +49,12 @@ export default function StatusCard({
           )}
         </div>
         
-        <div className="p-2 rounded-lg bg-primary/10 text-primary">
+        <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
           {icon}
         </div>
       </div>
       
-      <div className="absolute bottom-0 right-0 w-32 h-32 -m-6 rounded-full bg-primary/5"></div>
+      <div className="absolute bottom-0 right-0 w-24 h-24 -m-6 rounded-full bg-primary/5"></div>
     </motion.div>
   );
 }

@@ -42,7 +42,7 @@ export default function Layout() {
       <Sidebar />
       <div className="flex flex-col flex-1 overflow-hidden">
         <Header pageTitle={pageTitle} userProfile={profile} />
-        <main className="flex-1 overflow-auto p-4">
+        <main className="flex-1 overflow-auto p-2">
           <Outlet />
         </main>
         <Footer />
