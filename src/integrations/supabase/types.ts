@@ -9,6 +9,33 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      amr: {
+        Row: {
+          battery_level: number | null
+          coordinates: Json | null
+          id: string
+          last_updated: string | null
+          name: string
+          status: string | null
+        }
+        Insert: {
+          battery_level?: number | null
+          coordinates?: Json | null
+          id?: string
+          last_updated?: string | null
+          name: string
+          status?: string | null
+        }
+        Update: {
+          battery_level?: number | null
+          coordinates?: Json | null
+          id?: string
+          last_updated?: string | null
+          name?: string
+          status?: string | null
+        }
+        Relationships: []
+      }
       AMR: {
         Row: {
           created_at: string
@@ -24,12 +51,102 @@ export type Database = {
         }
         Relationships: []
       }
+      paths: {
+        Row: {
+          created_at: string | null
+          distance: number | null
+          end_point: Json
+          id: string
+          name: string
+          start_point: Json
+          updated_at: string | null
+          waypoints: Json | null
+        }
+        Insert: {
+          created_at?: string | null
+          distance?: number | null
+          end_point: Json
+          id?: string
+          name: string
+          start_point: Json
+          updated_at?: string | null
+          waypoints?: Json | null
+        }
+        Update: {
+          created_at?: string | null
+          distance?: number | null
+          end_point?: Json
+          id?: string
+          name?: string
+          start_point?: Json
+          updated_at?: string | null
+          waypoints?: Json | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          full_name: string | null
+          id: string
+          role: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          id: string
+          role?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          id?: string
+          role?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _user_id: string
+          _role: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

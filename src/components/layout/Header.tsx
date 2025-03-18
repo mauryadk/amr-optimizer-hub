@@ -1,19 +1,9 @@
 
-import { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { 
-  Bell, 
-  MessageSquare, 
-  User, 
-  ChevronDown, 
-  Check,
-  Settings,
-  LogOut,
-  BellRing
-} from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useToast } from '@/hooks/use-toast';
-import { Button } from '@/components/ui/button';
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,158 +12,155 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { LogOut, UserCircle, Settings, HelpCircle, Menu, X } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
-export default function Header() {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  const [notifications, setNotifications] = useState<{ id: string; message: string; read: boolean }[]>([
-    { id: '1', message: 'Robot Scout-01 completed task delivery', read: false },
-    { id: '2', message: 'Voyager-02 battery low (15%)', read: false },
-    { id: '3', message: 'New map snapshot available', read: true },
-  ]);
-  const [pageTitle, setPageTitle] = useState('Dashboard');
-  const [unreadCount, setUnreadCount] = useState(0);
-  
-  // Update page title based on location
-  useEffect(() => {
-    const path = location.pathname;
-    let title = 'Dashboard';
-    
-    if (path.includes('robots')) title = 'Robot Fleet';
-    else if (path.includes('map')) title = 'Navigation Map';
-    else if (path.includes('tasks')) title = 'Task Management';
-    else if (path.includes('settings')) title = 'System Settings';
-    else if (path.includes('documentation')) title = 'Documentation';
-    
-    setPageTitle(title);
-  }, [location]);
-  
-  // Count unread notifications
-  useEffect(() => {
-    setUnreadCount(notifications.filter(n => !n.read).length);
-  }, [notifications]);
-  
-  // Mark notification as read
-  const markAsRead = (id: string) => {
-    setNotifications(prev => 
-      prev.map(notif => 
-        notif.id === id ? { ...notif, read: true } : notif
-      )
-    );
-  };
-  
-  // Mark all as read
-  const markAllAsRead = () => {
-    setNotifications(prev => prev.map(notif => ({ ...notif, read: true })));
+interface HeaderProps {
+  pageTitle?: string;
+  userProfile?: any;
+}
+
+export default function Header({ pageTitle = "Dashboard", userProfile }: HeaderProps) {
+  const { signOut } = useAuth();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const handleSignOut = async () => {
+    await signOut();
     toast({
-      title: "Notifications cleared",
-      description: "All notifications have been marked as read",
+      title: "Signed out successfully",
+      description: "You have been logged out of your account",
     });
   };
-  
+
+  const navItems = [
+    { label: "Map", href: "/map" },
+    { label: "Robots", href: "/robots" },
+    { label: "Tasks", href: "/tasks" },
+    { label: "Settings", href: "/settings" },
+    { label: "Documentation", href: "/documentation" }
+  ];
+
   return (
-    <header className="bg-white border-b border-gray-200 shadow-sm py-3 px-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-xl font-semibold text-gray-800">{pageTitle}</h1>
-        
-        <div className="flex items-center space-x-4">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="relative">
-                <Bell size={18} />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-                    {unreadCount}
-                  </span>
-                )}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-80">
-              <DropdownMenuLabel className="flex justify-between items-center">
-                <span>Notifications</span>
-                {unreadCount > 0 && (
+    <header className="bg-white border-b border-gray-200 z-10">
+      <div className="px-4 sm:px-6 lg:px-8">
+        <div className="flex h-16 items-center justify-between">
+          {/* Logo and page title */}
+          <div className="flex items-center">
+            <Link to="/" className="flex items-center">
+              <img 
+                src="https://www.anzocontrols.com/wp-content/uploads/2022/11/Client_logo_anzo-removebg-preview-2.png" 
+                alt="Anzo Controls" 
+                className="h-8 mr-3" 
+              />
+              <span className="hidden md:block text-lg font-semibold text-gray-900">
+                Fleet Management
+              </span>
+            </Link>
+            <div className="hidden md:block ml-8">
+              <h1 className="text-xl font-medium text-gray-800">{pageTitle}</h1>
+            </div>
+          </div>
+
+          {/* Mobile menu button */}
+          <div className="md:hidden">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              aria-label="Toggle menu"
+            >
+              {isMobileMenuOpen ? (
+                <X className="h-6 w-6" />
+              ) : (
+                <Menu className="h-6 w-6" />
+              )}
+            </Button>
+          </div>
+
+          {/* Desktop navigation */}
+          <nav className="hidden md:flex items-center space-x-1">
+            {navItems.map((item) => (
+              <Link 
+                key={item.href}
+                to={item.href}
+                className="px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 transition-colors"
+              >
+                {item.label}
+              </Link>
+            ))}
+            
+            {/* User dropdown */}
+            {userProfile && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
                   <Button 
                     variant="ghost" 
-                    size="sm" 
-                    className="text-xs h-7"
-                    onClick={markAllAsRead}
+                    className="ml-2 flex items-center space-x-2 text-left"
                   >
-                    Mark all as read
+                    <UserCircle className="h-5 w-5" />
+                    <span className="max-w-[100px] truncate">
+                      {userProfile.full_name || userProfile.email || "User"}
+                    </span>
                   </Button>
-                )}
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              
-              <div className="max-h-80 overflow-y-auto py-1">
-                {notifications.length > 0 ? (
-                  notifications.map((notification) => (
-                    <DropdownMenuItem 
-                      key={notification.id}
-                      className="p-3 cursor-pointer focus:bg-gray-50"
-                      onClick={() => markAsRead(notification.id)}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className={`mt-0.5 p-1.5 rounded-full ${notification.read ? 'bg-gray-100' : 'bg-blue-100'}`}>
-                          <BellRing size={16} className={notification.read ? 'text-gray-500' : 'text-blue-500'} />
-                        </div>
-                        <div className="flex-1">
-                          <p className={`text-sm ${!notification.read ? 'font-medium' : ''}`}>
-                            {notification.message}
-                          </p>
-                          <p className="text-xs text-gray-500 mt-0.5">Just now</p>
-                        </div>
-                        {!notification.read && (
-                          <div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5" />
-                        )}
-                      </div>
-                    </DropdownMenuItem>
-                  ))
-                ) : (
-                  <div className="py-6 text-center text-gray-500 text-sm">
-                    No notifications
-                  </div>
-                )}
-              </div>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>
+                    <div className="flex flex-col space-y-0.5">
+                      <span>{userProfile.full_name || "User"}</span>
+                      <span className="text-xs text-gray-500 truncate">
+                        {userProfile.email}
+                      </span>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link to="/settings" className="cursor-pointer w-full">
+                      <Settings className="mr-2 h-4 w-4" />
+                      <span>Settings</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/documentation" className="cursor-pointer w-full">
+                      <HelpCircle className="mr-2 h-4 w-4" />
+                      <span>Help & Support</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Sign out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </nav>
+        </div>
+      </div>
+
+      {/* Mobile navigation menu */}
+      <div className={cn(
+        "md:hidden border-b border-gray-200 bg-white",
+        isMobileMenuOpen ? "block" : "hidden"
+      )}>
+        <div className="space-y-1 px-2 pb-3 pt-2">
+          {navItems.map((item) => (
+            <Link
+              key={item.href}
+              to={item.href}
+              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100"
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              {item.label}
+            </Link>
+          ))}
           <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => {
-              toast({
-                title: "Support chat initiated",
-                description: "Connecting to support services...",
-              });
-            }}
+            variant="ghost" 
+            className="w-full justify-start px-3 py-2 text-base font-medium text-gray-700 hover:bg-gray-100"
+            onClick={handleSignOut}
           >
-            <MessageSquare size={18} />
+            <LogOut className="mr-2 h-4 w-4" />
+            Sign out
           </Button>
-          
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                  <User size={16} className="text-primary" />
-                </div>
-                <span className="font-medium">Admin</span>
-                <ChevronDown size={16} />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>My Account</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => navigate('/settings')}>
-                <Settings size={16} className="mr-2" />
-                Settings
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <LogOut size={16} className="mr-2" />
-                Log out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
         </div>
       </div>
     </header>

@@ -16,6 +16,7 @@ import NavigationLayer from './NavigationLayer';
 import { toast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
 
 interface MapViewProps {
   editMode?: boolean;
@@ -30,7 +31,7 @@ export default function MapView({
   showBackgroundMap = true,
   showPaths = true,
   isGeneratingMap = false,
-  isFullscreen = false
+  isFullscreen = true
 }: MapViewProps) {
   const [hoveredRobot, setHoveredRobot] = useState<string | null>(null);
   const [animatedPositions, setAnimatedPositions] = useState(robotPositions);
@@ -45,25 +46,6 @@ export default function MapView({
   const [showMapPreview, setShowMapPreview] = useState(false);
   
   const mapContainerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (isGeneratingMap) {
-      const interval = setInterval(() => {
-        setMapGenerationProgress(prev => {
-          if (prev >= 100) {
-            clearInterval(interval);
-            return 100;
-          }
-          return prev + 5;
-        });
-      }, 2000);
-      
-      return () => {
-        clearInterval(interval);
-        setMapGenerationProgress(0);
-      };
-    }
-  }, [isGeneratingMap]);
 
   useEffect(() => {
     const fetchRobotPositions = async () => {
@@ -86,6 +68,32 @@ export default function MapView({
     }, 5000);
     
     return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const fetchRobots = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('AMR')
+          .select('*');
+          
+        if (error) {
+          console.error('Error fetching robots:', error);
+          return;
+        }
+        
+        if (data && data.length > 0) {
+          console.log('Robots loaded from Supabase:', data);
+          // Update UI with robot data if needed
+        } else {
+          console.log('No robots found in database, using mock data');
+        }
+      } catch (error) {
+        console.error('Error in fetchRobots:', error);
+      }
+    };
+    
+    fetchRobots();
   }, []);
 
   useEffect(() => {
@@ -208,8 +216,46 @@ export default function MapView({
 
   const findRobot = useCallback((id: string) => robots.find(r => r.id === id), []);
 
+  const saveMap = useCallback(async () => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/map-save`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabase.auth.getSession().then(res => res.data.session?.access_token)}`
+        },
+        body: JSON.stringify({
+          mapData: {
+            name: 'warehouse_map',
+            timestamp: new Date().toISOString(),
+            nodes: [],
+            paths: []
+          }
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save map');
+      }
+
+      const result = await response.json();
+      
+      toast({
+        title: "Map saved successfully",
+        description: `Map ID: ${result.id}`
+      });
+    } catch (error) {
+      console.error('Error saving map:', error);
+      toast({
+        title: "Error saving map",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive"
+      });
+    }
+  }, []);
+
   const containerClass = isFullscreen 
-    ? "absolute inset-0 p-0 rounded-none" 
+    ? "fixed inset-0 p-0 z-10 bg-gray-50" 
     : "glass-card rounded-xl p-5 shadow-sm h-full relative overflow-hidden";
 
   return (
@@ -253,7 +299,7 @@ export default function MapView({
         className={cn(
           "relative bg-gray-50 rounded-lg overflow-hidden border border-gray-100 map-container",
           editMode ? "cursor-crosshair" : isDraggingView ? "cursor-grabbing" : "cursor-grab",
-          isFullscreen ? "h-full" : "h-[calc(100%-2rem)]"
+          isFullscreen ? "h-screen w-screen" : "h-[calc(100%-2rem)]"
         )}
         ref={mapContainerRef}
         onMouseDown={handleViewDragStart}
@@ -613,6 +659,33 @@ export default function MapView({
           </div>
         </DialogContent>
       </Dialog>
+      
+      {isFullscreen && (
+        <div className="absolute top-16 left-0 right-0 flex justify-center">
+          <div className="bg-white px-4 py-2 rounded-full shadow-md border border-gray-200">
+            <h2 className="text-lg font-semibold flex items-center">
+              <img 
+                src="https://www.anzocontrols.com/wp-content/uploads/2022/11/Client_logo_anzo-removebg-preview-2.png" 
+                alt="Anzo Controls"
+                className="h-6 mr-2"
+              />
+              Fleet Management System - Live Map View
+            </h2>
+          </div>
+        </div>
+      )}
+      
+      {isFullscreen && !isGeneratingMap && (
+        <div className="absolute top-20 right-6 mt-10">
+          <Button 
+            className="shadow-md flex items-center bg-white text-primary hover:bg-gray-50 border border-gray-200"
+            onClick={saveMap}
+          >
+            <Save size={16} className="mr-2" />
+            Save Map
+          </Button>
+        </div>
+      )}
     </motion.div>
   );
 }
