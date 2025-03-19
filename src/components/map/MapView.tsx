@@ -864,4 +864,46 @@ export default function MapView({
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div
+            <div className="space-y-2">
+              <Label htmlFor="name">Zone Name</Label>
+              <Input
+                id="name"
+                value={newPolygonName}
+                onChange={(e) => setNewPolygonName(e.target.value)}
+                placeholder="Enter a descriptive name for this zone"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPolygonNameDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={editingPolygon ? updatePolygonName : saveNewPolygon}>
+              {editingPolygon ? "Update" : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirm delete dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={(open) => !open && setShowDeleteDialog(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Zone</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this zone? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmDeletePolygon}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
