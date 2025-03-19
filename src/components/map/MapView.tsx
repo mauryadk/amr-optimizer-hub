@@ -859,4 +859,4 @@ export default function MapView({
       </div>
       
       {showBackgroundMap && mapLoaded && !isGeneratingMap && (
-        <div className="absolute bottom-5 left-5 bg-white rounded-md shadow-sm px-3 py-2 text-xs border border-gray-100
+        <div className="absolute bottom-5 left-5 bg-white rounded-md shadow-sm px-3 py-2 text-xs border border-gray-100">
