@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { 
   MapPin, 
@@ -7,11 +7,23 @@ import {
   Package, 
   BoxSelect,
   CircleDot,
-  Truck
+  Truck,
+  Plus,
+  Trash2,
+  Link,
+  RotateCcw,
+  BatteryMedium,
+  Wifi
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PathNode, PathEdge, generateTestNavigationGraph, findShortestPath } from '@/utils/pathCalculator';
 import { toast } from '@/hooks/use-toast';
+import { robots } from '@/utils/mockData';
+import { 
+  HoverCard,
+  HoverCardTrigger,
+  HoverCardContent 
+} from '@/components/ui/hover-card';
 
 interface NavigationLayerProps {
   editMode: boolean;
@@ -19,6 +31,7 @@ interface NavigationLayerProps {
   robotPositions?: {robotId: string, x: number, y: number}[];
   onNodeSelect?: (nodeId: string) => void;
   onPathSelect?: (edgeId: string) => void;
+  isEditingNodes?: boolean;
 }
 
 export default function NavigationLayer({
@@ -26,7 +39,8 @@ export default function NavigationLayer({
   showPaths,
   robotPositions = [],
   onNodeSelect,
-  onPathSelect
+  onPathSelect,
+  isEditingNodes = false
 }: NavigationLayerProps) {
   const [nodes, setNodes] = useState<PathNode[]>([]);
   const [edges, setEdges] = useState<PathEdge[]>([]);
@@ -35,6 +49,11 @@ export default function NavigationLayer({
   const [activePath, setActivePath] = useState<string[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [draggedNodeId, setDraggedNodeId] = useState<string | null>(null);
+  const [isAddingNode, setIsAddingNode] = useState(false);
+  const [isConnectingNodes, setIsConnectingNodes] = useState(false);
+  const [connectionStartNodeId, setConnectionStartNodeId] = useState<string | null>(null);
+  
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Initialize with test data
   useEffect(() => {
@@ -59,20 +78,50 @@ export default function NavigationLayer({
 
   // Handle node selection
   const handleNodeClick = (nodeId: string) => {
-    if (editMode) {
-      setSelectedNodeId(nodeId);
-      if (onNodeSelect) onNodeSelect(nodeId);
-      
-      toast({
-        title: "Node selected",
-        description: `Selected ${nodes.find(n => n.id === nodeId)?.name}`,
-      });
+    if (isEditingNodes) {
+      if (isConnectingNodes) {
+        if (connectionStartNodeId) {
+          // Create a new connection between nodes
+          const newEdgeId = `e${Date.now()}`;
+          const newEdge: PathEdge = {
+            id: newEdgeId,
+            source: connectionStartNodeId,
+            target: nodeId,
+            bidirectional: true,
+            cost: 1,
+            preferred: false
+          };
+          
+          setEdges(prev => [...prev, newEdge]);
+          setIsConnectingNodes(false);
+          setConnectionStartNodeId(null);
+          
+          toast({
+            title: "Path created",
+            description: "A new path between nodes has been created",
+          });
+        } else {
+          setConnectionStartNodeId(nodeId);
+          toast({
+            title: "First node selected",
+            description: "Now select the second node to connect to",
+          });
+        }
+      } else {
+        setSelectedNodeId(nodeId);
+        if (onNodeSelect) onNodeSelect(nodeId);
+        
+        toast({
+          title: "Node selected",
+          description: `Selected ${nodes.find(n => n.id === nodeId)?.name}`,
+        });
+      }
     }
   };
 
   // Handle edge selection
   const handleEdgeClick = (edgeId: string) => {
-    if (editMode) {
+    if (isEditingNodes) {
       setSelectedEdgeId(edgeId);
       if (onPathSelect) onPathSelect(edgeId);
       
@@ -84,8 +133,9 @@ export default function NavigationLayer({
   };
 
   // Handle node drag start
-  const handleDragStart = (nodeId: string) => {
-    if (editMode) {
+  const handleDragStart = (nodeId: string, e: React.MouseEvent) => {
+    if (isEditingNodes) {
+      e.stopPropagation();
       setIsDragging(true);
       setDraggedNodeId(nodeId);
     }
@@ -93,8 +143,8 @@ export default function NavigationLayer({
 
   // Handle node drag
   const handleDrag = (e: React.MouseEvent, nodeId: string) => {
-    if (editMode && isDragging && draggedNodeId === nodeId) {
-      const rect = (e.target as Element).closest('.map-container')?.getBoundingClientRect();
+    if (isEditingNodes && isDragging && draggedNodeId === nodeId) {
+      const rect = containerRef.current?.getBoundingClientRect();
       if (rect) {
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
@@ -110,10 +160,82 @@ export default function NavigationLayer({
 
   // Handle node drag end
   const handleDragEnd = () => {
-    if (editMode) {
+    if (isEditingNodes) {
       setIsDragging(false);
       setDraggedNodeId(null);
     }
+  };
+
+  // Add a new node to the map
+  const handleAddNode = (e: React.MouseEvent) => {
+    if (!isEditingNodes || !isAddingNode || !containerRef.current) return;
+    
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    const newNodeId = `n${Date.now()}`;
+    const newNode: PathNode = {
+      id: newNodeId,
+      name: `New Node ${nodes.length + 1}`,
+      type: 'junction',
+      x,
+      y
+    };
+    
+    setNodes(prev => [...prev, newNode]);
+    setIsAddingNode(false);
+    
+    toast({
+      title: "Node added",
+      description: "A new node has been added to the map",
+    });
+  };
+
+  // Delete the selected node
+  const handleDeleteNode = () => {
+    if (!selectedNodeId) return;
+    
+    // Remove all edges connected to this node
+    const filteredEdges = edges.filter(
+      edge => edge.source !== selectedNodeId && edge.target !== selectedNodeId
+    );
+    
+    setEdges(filteredEdges);
+    setNodes(prev => prev.filter(node => node.id !== selectedNodeId));
+    setSelectedNodeId(null);
+    
+    toast({
+      title: "Node deleted",
+      description: "The node and its connections have been removed",
+    });
+  };
+
+  // Delete the selected edge
+  const handleDeleteEdge = () => {
+    if (!selectedEdgeId) return;
+    
+    setEdges(prev => prev.filter(edge => edge.id !== selectedEdgeId));
+    setSelectedEdgeId(null);
+    
+    toast({
+      title: "Path deleted",
+      description: "The path has been removed",
+    });
+  };
+
+  // Toggle path preference
+  const handleTogglePreference = () => {
+    if (!selectedEdgeId) return;
+    
+    setEdges(prev => prev.map(edge => 
+      edge.id === selectedEdgeId ? { ...edge, preferred: !edge.preferred } : edge
+    ));
+    
+    toast({
+      title: "Path preference updated",
+      description: "The path preference has been toggled",
+    });
   };
 
   // Get icon based on node type
@@ -162,17 +284,25 @@ export default function NavigationLayer({
     };
   };
 
+  // Find robot details by ID
+  const findRobotDetails = (id: string) => {
+    return robots.find(r => r.id === id) || null;
+  };
+
   if (!showPaths) return null;
 
   return (
-    <div className="absolute inset-0 pointer-events-none">
+    <div className="absolute inset-0 pointer-events-none" ref={containerRef} onClick={handleAddNode}>
       {/* Render edges first (under nodes) */}
       {edges.map(edge => (
         <div
           key={edge.id}
           className={getEdgeClassName(edge)}
           style={calculateLineStyle(edge)}
-          onClick={() => handleEdgeClick(edge.id)}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleEdgeClick(edge.id);
+          }}
           onMouseOver={() => !editMode && setSelectedEdgeId(edge.id)}
           onMouseOut={() => !editMode && setSelectedEdgeId(null)}
         />
@@ -187,7 +317,8 @@ export default function NavigationLayer({
             selectedNodeId === node.id 
               ? "bg-white border-primary shadow-md" 
               : "bg-white/80 border-gray-300 hover:border-primary/70",
-            activePath.includes(node.id) ? "ring-2 ring-green-400 ring-opacity-50" : ""
+            activePath.includes(node.id) ? "ring-2 ring-green-400 ring-opacity-50" : "",
+            connectionStartNodeId === node.id ? "ring-2 ring-blue-500" : ""
           )}
           style={{ 
             left: `${node.x}px`, 
@@ -196,8 +327,11 @@ export default function NavigationLayer({
             zIndex: selectedNodeId === node.id ? 10 : 5
           }}
           whileHover={{ scale: 1.1 }}
-          onClick={() => handleNodeClick(node.id)}
-          onMouseDown={() => handleDragStart(node.id)}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleNodeClick(node.id);
+          }}
+          onMouseDown={(e) => handleDragStart(node.id, e)}
           onMouseMove={(e) => handleDrag(e, node.id)}
           onMouseUp={handleDragEnd}
           onMouseLeave={handleDragEnd}
@@ -211,28 +345,185 @@ export default function NavigationLayer({
       ))}
       
       {/* Render robot positions on top */}
-      {robotPositions.map((position) => (
-        <motion.div
-          key={position.robotId}
-          className="absolute bg-green-100 rounded-full p-1 border-2 border-green-500 pointer-events-auto"
-          style={{ 
-            left: `${position.x}px`, 
-            top: `${position.y}px`,
-            transform: 'translate(-50%, -50%)',
-            zIndex: 20
-          }}
-          animate={{ 
-            x: [0, 2, 0, -2, 0],
-            y: [0, 2, 0, -2, 0]
-          }}
-          transition={{ 
-            repeat: Infinity, 
-            duration: 2 
-          }}
-        >
-          <Truck size={14} className="text-green-600" />
-        </motion.div>
-      ))}
+      {robotPositions.map((position) => {
+        const robotDetails = findRobotDetails(position.robotId);
+        
+        return (
+          <HoverCard key={position.robotId} openDelay={100} closeDelay={200}>
+            <HoverCardTrigger asChild>
+              <motion.div
+                className="absolute bg-green-100 rounded-full p-1 border-2 border-green-500 pointer-events-auto"
+                style={{ 
+                  left: `${position.x}px`, 
+                  top: `${position.y}px`,
+                  transform: 'translate(-50%, -50%)',
+                  zIndex: 20
+                }}
+                animate={{ 
+                  x: [0, 2, 0, -2, 0],
+                  y: [0, 2, 0, -2, 0]
+                }}
+                transition={{ 
+                  repeat: Infinity, 
+                  duration: 2 
+                }}
+              >
+                <Truck size={14} className="text-green-600" />
+              </motion.div>
+            </HoverCardTrigger>
+            
+            <HoverCardContent side="top" className="w-64 p-4">
+              {robotDetails ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-medium text-base">{robotDetails.name}</h3>
+                    <div className={cn(
+                      "px-2 py-0.5 text-xs rounded-full",
+                      robotDetails.status === 'active' ? "bg-green-100 text-green-800" :
+                      robotDetails.status === 'charging' ? "bg-yellow-100 text-yellow-800" :
+                      robotDetails.status === 'error' ? "bg-red-100 text-red-800" :
+                      "bg-gray-100 text-gray-800"
+                    )}>
+                      {robotDetails.status}
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-y-1 text-sm">
+                    <div className="text-gray-500">ID:</div>
+                    <div>{robotDetails.id}</div>
+                    
+                    <div className="text-gray-500">Model:</div>
+                    <div>{robotDetails.model}</div>
+                    
+                    <div className="text-gray-500">Status:</div>
+                    <div className="capitalize">{robotDetails.status}</div>
+                  </div>
+                  
+                  <div className="pt-2 flex space-x-4">
+                    <div className="flex items-center">
+                      <BatteryMedium className="h-4 w-4 mr-1 text-gray-500" />
+                      <div className="text-sm">
+                        <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <div 
+                            className={cn(
+                              "h-full",
+                              robotDetails.batteryLevel > 60 ? "bg-green-500" :
+                              robotDetails.batteryLevel > 30 ? "bg-yellow-500" : "bg-red-500"
+                            )}
+                            style={{ width: `${robotDetails.batteryLevel}%` }}
+                          />
+                        </div>
+                        <span className="text-xs">{robotDetails.batteryLevel}%</span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center">
+                      <Wifi className="h-4 w-4 mr-1 text-gray-500" />
+                      <span className="text-xs">Connected</span>
+                    </div>
+                  </div>
+                  
+                  <div className="pt-1 text-xs text-gray-500">
+                    Current Task: {robotDetails.currentTask || "None"}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-sm">Robot data unavailable</div>
+              )}
+            </HoverCardContent>
+          </HoverCard>
+        );
+      })}
+
+      {/* Node editing controls */}
+      {isEditingNodes && (
+        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-white rounded-lg shadow-lg px-4 py-2 pointer-events-auto flex space-x-2 z-10">
+          <Button 
+            variant={isAddingNode ? "secondary" : "outline"} 
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsAddingNode(!isAddingNode);
+              setIsConnectingNodes(false);
+              setConnectionStartNodeId(null);
+              
+              if (!isAddingNode) {
+                toast({
+                  title: "Add mode activated",
+                  description: "Click anywhere on the map to add a new node",
+                });
+              }
+            }}
+          >
+            <Plus className="mr-1 h-4 w-4" />
+            Add Node
+          </Button>
+          
+          <Button 
+            variant={isConnectingNodes ? "secondary" : "outline"} 
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsConnectingNodes(!isConnectingNodes);
+              setIsAddingNode(false);
+              setConnectionStartNodeId(null);
+              
+              if (!isConnectingNodes) {
+                toast({
+                  title: "Connect mode activated",
+                  description: "Select two nodes to create a path between them",
+                });
+              }
+            }}
+            disabled={nodes.length < 2}
+          >
+            <Link className="mr-1 h-4 w-4" />
+            Connect
+          </Button>
+          
+          {selectedNodeId && (
+            <Button 
+              variant="destructive" 
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDeleteNode();
+              }}
+            >
+              <Trash2 className="mr-1 h-4 w-4" />
+              Delete Node
+            </Button>
+          )}
+          
+          {selectedEdgeId && (
+            <>
+              <Button 
+                variant="destructive" 
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteEdge();
+                }}
+              >
+                <Trash2 className="mr-1 h-4 w-4" />
+                Delete Path
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleTogglePreference();
+                }}
+              >
+                <RotateCcw className="mr-1 h-4 w-4" />
+                Toggle Preferred
+              </Button>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

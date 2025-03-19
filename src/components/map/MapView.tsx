@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { robotPositions, robots, getStatusColor } from '@/utils/mockData';
 import { motion } from 'framer-motion';
@@ -33,13 +32,7 @@ interface MapViewProps {
   isFullscreen?: boolean;
   showLabels?: boolean;
   onPolygonCreated?: (id: string | null) => void;
-}
-
-interface Polygon {
-  id: string;
-  name: string;
-  points: { x: number; y: number }[];
-  color: string;
+  isEditingNodes?: boolean;
 }
 
 export default function MapView({ 
@@ -49,7 +42,8 @@ export default function MapView({
   isGeneratingMap = false,
   isFullscreen = true,
   showLabels = true,
-  onPolygonCreated
+  onPolygonCreated,
+  isEditingNodes = false
 }: MapViewProps) {
   const [hoveredRobot, setHoveredRobot] = useState<string | null>(null);
   const [animatedPositions, setAnimatedPositions] = useState(robotPositions);
@@ -120,14 +114,13 @@ export default function MapView({
   }, []);
 
   useEffect(() => {
-    // Only initialize drawing mode if editMode is true
-    if (editMode) {
+    if (editMode || isEditingNodes) {
       setIsDrawingPolygon(true);
     } else {
       setIsDrawingPolygon(false);
       setCurrentPolygonPoints([]);
     }
-  }, [editMode]);
+  }, [editMode, isEditingNodes]);
 
   useEffect(() => {
     const fetchRobots = async () => {
@@ -181,7 +174,6 @@ export default function MapView({
   }, [showBackgroundMap]);
 
   useEffect(() => {
-    // Simulating map generation progress
     if (isGeneratingMap && mapGenerationProgress < 100) {
       const interval = setInterval(() => {
         setMapGenerationProgress(prev => {
@@ -333,21 +325,18 @@ export default function MapView({
     
     if (!mapContainerRef.current) return;
     
-    // Get click position relative to map container
     const rect = mapContainerRef.current.getBoundingClientRect();
     const x = (e.clientX - rect.left) / viewScale - viewPosition.x / viewScale;
     const y = (e.clientY - rect.top) / viewScale - viewPosition.y / viewScale;
     
     setCurrentPolygonPoints(prev => [...prev, { x, y }]);
     
-    // If we have at least 3 points, allow completing the polygon
     if (currentPolygonPoints.length >= 2) {
       toast({
         title: "Point added",
         description: "Click 'Complete' when finished or add more points",
       });
     }
-    
   }, [editMode, isDrawingPolygon, currentPolygonPoints.length, viewScale, viewPosition]);
 
   const completePolygon = useCallback(() => {
@@ -507,15 +496,15 @@ export default function MapView({
       <div 
         className={cn(
           "relative bg-gray-50 rounded-lg overflow-hidden border border-gray-100 map-container",
-          editMode ? "cursor-crosshair" : isDraggingView ? "cursor-grabbing" : "cursor-grab",
+          editMode || isEditingNodes ? "cursor-crosshair" : isDraggingView ? "cursor-grabbing" : "cursor-grab",
           isFullscreen ? "h-screen w-screen" : "h-[calc(100%-2rem)]"
         )}
         ref={mapContainerRef}
-        onMouseDown={handleViewDragStart}
-        onMouseMove={handleViewDragMove}
-        onMouseUp={handleViewDragEnd}
-        onMouseLeave={handleViewDragEnd}
-        onWheel={handleWheel}
+        onMouseDown={!isEditingNodes ? handleViewDragStart : undefined}
+        onMouseMove={!isEditingNodes ? handleViewDragMove : undefined}
+        onMouseUp={!isEditingNodes ? handleViewDragEnd : undefined}
+        onMouseLeave={!isEditingNodes ? handleViewDragEnd : undefined}
+        onWheel={!isEditingNodes ? handleWheel : undefined}
         onClick={handleMapClick}
       >
         {showBackgroundMap && !isGeneratingMap && (
@@ -613,9 +602,9 @@ export default function MapView({
               showPaths={showPaths}
               robotPositions={animatedPositions}
               onNodeSelect={handleNodeSelect}
+              isEditingNodes={isEditingNodes}
             />
             
-            {/* Render existing polygons */}
             {polygons.map(polygon => (
               <div key={polygon.id} 
                 onClick={() => handlePolygonClick(polygon.id)}
@@ -657,7 +646,6 @@ export default function MapView({
               </div>
             ))}
             
-            {/* Render polygon being drawn */}
             {isDrawingPolygon && currentPolygonPoints.length > 0 && (
               <svg 
                 width="800" 
@@ -1095,6 +1083,13 @@ export default function MapView({
         <div className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-white px-4 py-2 rounded-md shadow-md border border-blue-200 text-blue-800">
           <p className="text-sm font-medium">Drawing Mode Active</p>
           <p className="text-xs mt-1">Click on the map to add points to your polygon</p>
+        </div>
+      )}
+      
+      {isEditingNodes && (
+        <div className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-white px-4 py-2 rounded-md shadow-md border border-blue-200 text-blue-800">
+          <p className="text-sm font-medium">Path Editing Mode Active</p>
+          <p className="text-xs mt-1">You can add, move, connect, and delete navigation nodes</p>
         </div>
       )}
     </motion.div>
