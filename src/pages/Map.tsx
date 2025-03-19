@@ -94,12 +94,16 @@ export default function Map() {
         </div>
       </div>
       
-      <MapView 
-        isFullscreen={false} 
-        editMode={isDrawingMode}
-        showLabels={showLabels}
-        onPolygonCreated={setCurrentPolygon}
-      />
+      <div className="h-[calc(100vh-12rem)] relative">
+        <MapView 
+          isFullscreen={false} 
+          editMode={isDrawingMode}
+          showLabels={showLabels}
+          showPaths={true}
+          showBackgroundMap={true}
+          onPolygonCreated={setCurrentPolygon}
+        />
+      </div>
     </div>
   );
 }

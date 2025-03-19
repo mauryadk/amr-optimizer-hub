@@ -214,7 +214,7 @@ export default function NavigationLayer({
       {robotPositions.map((position) => (
         <motion.div
           key={position.robotId}
-          className="absolute bg-green-100 rounded-full p-1 border-2 border-green-500"
+          className="absolute bg-green-100 rounded-full p-1 border-2 border-green-500 pointer-events-auto"
           style={{ 
             left: `${position.x}px`, 
             top: `${position.y}px`,

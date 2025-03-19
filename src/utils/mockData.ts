@@ -1,4 +1,3 @@
-
 // Robot statuses
 export type RobotStatus = 'active' | 'idle' | 'charging' | 'maintenance' | 'error';
 
@@ -187,12 +186,10 @@ export const locations: Location[] = [
 
 // Mock robot positions on map
 export const robotPositions = [
-  { robotId: '001', x: 280, y: 320 },
-  { robotId: '002', x: 450, y: 400 },
-  { robotId: '003', x: 100, y: 150 },
-  { robotId: '004', x: 250, y: 450 },
-  { robotId: '005', x: 520, y: 180 },
-  { robotId: '006', x: 350, y: 200 }
+  { robotId: 'robot1', x: 150, y: 150 },
+  { robotId: 'robot2', x: 300, y: 200 },
+  { robotId: 'robot3', x: 250, y: 300 },
+  { robotId: 'robot4', x: 400, y: 150 }
 ];
 
 // Summary statistics
