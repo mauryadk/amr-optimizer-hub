@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { robotPositions, robots, getStatusColor } from '@/utils/mockData';
-import { motion } from 'framer-motion';
 import { 
   BatteryMedium, 
   AlertCircle,
@@ -458,10 +457,7 @@ export default function MapView({
     : "glass-card rounded-xl p-5 shadow-sm h-full relative overflow-hidden";
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
+    <div
       className={containerClass}
     >
       {!isFullscreen && (
@@ -687,12 +683,9 @@ export default function MapView({
             if (!robot) return null;
             
             return (
-              <motion.div
+              <div
                 key={position.robotId}
                 className="absolute"
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ type: "spring", stiffness: 500, damping: 30, delay: 0.3 }}
                 style={{ 
                   left: `${position.x}px`, 
                   top: `${position.y}px`,
@@ -702,21 +695,12 @@ export default function MapView({
                 onMouseEnter={() => setHoveredRobot(position.robotId)}
                 onMouseLeave={() => setHoveredRobot(null)}
               >
-                <motion.div 
+                <div 
                   className={cn(
                     "rounded-full flex items-center justify-center relative cursor-pointer",
                     robot.status === 'active' ? "w-8 h-8" : "w-7 h-7",
                     robot.status === 'error' ? "bg-red-100" : isGeneratingMap && robot.id === 'robot1' ? "bg-blue-100" : "bg-white"
                   )}
-                  whileHover={{ scale: 1.1 }}
-                  animate={{ 
-                    x: robot.status === 'active' ? [0, 1, 0, -1, 0] : 0,
-                    y: robot.status === 'active' ? [0, 1, 0, -1, 0] : 0,
-                  }}
-                  transition={{ 
-                    x: { repeat: Infinity, duration: 2 },
-                    y: { repeat: Infinity, duration: 2 }
-                  }}
                 >
                   {robot.status === 'error' ? (
                     <AlertCircle size={16} className="text-red-500" />
@@ -732,9 +716,7 @@ export default function MapView({
                   )} />
                   
                   {hoveredRobot === position.robotId && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
+                    <div
                       className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 bg-white px-3 py-2 rounded-md shadow-md text-sm whitespace-nowrap z-10 border border-gray-100"
                     >
                       <div className="font-medium">{robot.name}</div>
@@ -758,10 +740,10 @@ export default function MapView({
                           <span>Map Progress: {mapGenerationProgress}%</span>
                         </div>
                       )}
-                    </motion.div>
+                    </div>
                   )}
-                </motion.div>
-              </motion.div>
+                </div>
+              </div>
             );
           })}
         </div>
@@ -860,3 +842,26 @@ export default function MapView({
       
       {showBackgroundMap && mapLoaded && !isGeneratingMap && (
         <div className="absolute bottom-5 left-5 bg-white rounded-md shadow-sm px-3 py-2 text-xs border border-gray-100">
+          <div className="font-medium mb-1">Map Legend</div>
+          <div className="flex items-center mb-1">
+            <div className="w-3 h-3 bg-gray-800 opacity-20 mr-2"></div>
+            <span>Walls/Obstacles</span>
+          </div>
+          <div className="flex items-center mb-1">
+            <div className="w-3 h-3 bg-blue-500 opacity-40 mr-2"></div>
+            <span>Navigation Area</span>
+          </div>
+        </div>
+      )}
+
+      {/* Dialog for polygon name */}
+      <Dialog open={showPolygonNameDialog} onOpenChange={(open) => !open && setShowPolygonNameDialog(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingPolygon ? "Edit Zone Name" : "New Zone"}</DialogTitle>
+            <DialogDescription>
+              {editingPolygon ? "Update the name for this zone" : "Give this zone a descriptive name"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div
