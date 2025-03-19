@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils';
 import { PathNode, PathEdge, generateTestNavigationGraph, findShortestPath } from '@/utils/pathCalculator';
 import { toast } from '@/hooks/use-toast';
 import { robots } from '@/utils/mockData';
+import { Button } from '@/components/ui/button';
 import { 
   HoverCard,
   HoverCardTrigger,
