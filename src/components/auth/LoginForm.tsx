@@ -78,12 +78,16 @@ export default function LoginForm() {
       <div className="space-y-2">
         <div className="flex justify-between">
           <Label htmlFor="password">Password</Label>
-          <a 
-            href="/auth/reset-password" 
-            className="text-sm text-primary hover:underline"
+          <Button 
+            variant="link" 
+            className="text-sm p-0 h-auto"
+            onClick={(e) => {
+              e.preventDefault();
+              navigate("/auth/reset-password");
+            }}
           >
             Forgot password?
-          </a>
+          </Button>
         </div>
         <Input
           id="password"
@@ -114,12 +118,16 @@ export default function LoginForm() {
 
       <div className="text-center mt-4">
         <span className="text-sm text-gray-600">Don't have an account? </span>
-        <a 
-          href="/auth/signup" 
-          className="text-sm text-primary font-medium hover:underline"
+        <Button 
+          variant="link" 
+          className="text-sm p-0 h-auto"
+          onClick={(e) => {
+            e.preventDefault();
+            navigate("/auth/signup");
+          }}
         >
           Create account
-        </a>
+        </Button>
       </div>
     </form>
   );

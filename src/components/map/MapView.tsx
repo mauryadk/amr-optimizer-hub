@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { robotPositions, robots, getStatusColor } from '@/utils/mockData';
 import { motion } from 'framer-motion';
@@ -9,13 +10,19 @@ import {
   RotateCw,
   ZoomIn,
   ZoomOut,
-  Save
+  Save,
+  Edit,
+  Trash2,
+  Check,
+  X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import NavigationLayer from './NavigationLayer';
 import { toast } from '@/hooks/use-toast';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 
 interface MapViewProps {
@@ -24,6 +31,15 @@ interface MapViewProps {
   showPaths?: boolean;
   isGeneratingMap?: boolean;
   isFullscreen?: boolean;
+  showLabels?: boolean;
+  onPolygonCreated?: (id: string | null) => void;
+}
+
+interface Polygon {
+  id: string;
+  name: string;
+  points: { x: number; y: number }[];
+  color: string;
 }
 
 export default function MapView({ 
@@ -31,7 +47,9 @@ export default function MapView({
   showBackgroundMap = true,
   showPaths = true,
   isGeneratingMap = false,
-  isFullscreen = true
+  isFullscreen = true,
+  showLabels = true,
+  onPolygonCreated
 }: MapViewProps) {
   const [hoveredRobot, setHoveredRobot] = useState<string | null>(null);
   const [animatedPositions, setAnimatedPositions] = useState(robotPositions);
@@ -44,6 +62,37 @@ export default function MapView({
   const [selectedNodeInfo, setSelectedNodeInfo] = useState<any>(null);
   const [mapGenerationProgress, setMapGenerationProgress] = useState(0);
   const [showMapPreview, setShowMapPreview] = useState(false);
+  const [polygons, setPolygons] = useState<Polygon[]>([
+    {
+      id: "poly1",
+      name: "Loading Zone A",
+      points: [
+        { x: 100, y: 100 },
+        { x: 200, y: 100 },
+        { x: 200, y: 200 },
+        { x: 100, y: 200 }
+      ],
+      color: "rgba(59, 130, 246, 0.3)"
+    },
+    {
+      id: "poly2",
+      name: "Storage Area B",
+      points: [
+        { x: 300, y: 150 },
+        { x: 400, y: 150 },
+        { x: 400, y: 250 },
+        { x: 300, y: 250 }
+      ],
+      color: "rgba(236, 72, 153, 0.3)"
+    }
+  ]);
+  const [isDrawingPolygon, setIsDrawingPolygon] = useState(false);
+  const [currentPolygonPoints, setCurrentPolygonPoints] = useState<{ x: number; y: number }[]>([]);
+  const [showPolygonNameDialog, setShowPolygonNameDialog] = useState(false);
+  const [newPolygonName, setNewPolygonName] = useState("");
+  const [selectedPolygon, setSelectedPolygon] = useState<string | null>(null);
+  const [editingPolygon, setEditingPolygon] = useState<string | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   
   const mapContainerRef = useRef<HTMLDivElement>(null);
 
@@ -69,6 +118,16 @@ export default function MapView({
     
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    // Only initialize drawing mode if editMode is true
+    if (editMode) {
+      setIsDrawingPolygon(true);
+    } else {
+      setIsDrawingPolygon(false);
+      setCurrentPolygonPoints([]);
+    }
+  }, [editMode]);
 
   useEffect(() => {
     const fetchRobots = async () => {
@@ -120,6 +179,20 @@ export default function MapView({
         });
     }
   }, [showBackgroundMap]);
+
+  useEffect(() => {
+    // Simulating map generation progress
+    if (isGeneratingMap && mapGenerationProgress < 100) {
+      const interval = setInterval(() => {
+        setMapGenerationProgress(prev => {
+          const newProgress = prev + Math.floor(Math.random() * 5) + 1;
+          return newProgress > 100 ? 100 : newProgress;
+        });
+      }, 1000);
+      
+      return () => clearInterval(interval);
+    }
+  }, [isGeneratingMap, mapGenerationProgress]);
 
   const handleViewDragStart = useCallback((e: React.MouseEvent) => {
     if (!editMode) {
@@ -229,7 +302,8 @@ export default function MapView({
             name: 'warehouse_map',
             timestamp: new Date().toISOString(),
             nodes: [],
-            paths: []
+            paths: [],
+            polygons: polygons
           }
         })
       });
@@ -252,7 +326,142 @@ export default function MapView({
         variant: "destructive"
       });
     }
+  }, [polygons]);
+
+  const handleMapClick = useCallback((e: React.MouseEvent) => {
+    if (!editMode || !isDrawingPolygon) return;
+    
+    if (!mapContainerRef.current) return;
+    
+    // Get click position relative to map container
+    const rect = mapContainerRef.current.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / viewScale - viewPosition.x / viewScale;
+    const y = (e.clientY - rect.top) / viewScale - viewPosition.y / viewScale;
+    
+    setCurrentPolygonPoints(prev => [...prev, { x, y }]);
+    
+    // If we have at least 3 points, allow completing the polygon
+    if (currentPolygonPoints.length >= 2) {
+      toast({
+        title: "Point added",
+        description: "Click 'Complete' when finished or add more points",
+      });
+    }
+    
+  }, [editMode, isDrawingPolygon, currentPolygonPoints.length, viewScale, viewPosition]);
+
+  const completePolygon = useCallback(() => {
+    if (currentPolygonPoints.length < 3) {
+      toast({
+        title: "Not enough points",
+        description: "A polygon requires at least 3 points",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setShowPolygonNameDialog(true);
+  }, [currentPolygonPoints]);
+
+  const saveNewPolygon = useCallback(() => {
+    if (!newPolygonName) {
+      toast({
+        title: "Name required",
+        description: "Please provide a name for this zone",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    const newPolygon: Polygon = {
+      id: `poly${Date.now()}`,
+      name: newPolygonName,
+      points: [...currentPolygonPoints],
+      color: `rgba(${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, 0.3)`
+    };
+    
+    setPolygons(prev => [...prev, newPolygon]);
+    setCurrentPolygonPoints([]);
+    setNewPolygonName("");
+    setShowPolygonNameDialog(false);
+    setIsDrawingPolygon(false);
+    
+    if (onPolygonCreated) {
+      onPolygonCreated(newPolygon.id);
+    }
+    
+    toast({
+      title: "Zone created",
+      description: `"${newPolygonName}" has been added to the map`,
+    });
+  }, [newPolygonName, currentPolygonPoints, onPolygonCreated]);
+
+  const cancelPolygonCreation = useCallback(() => {
+    setCurrentPolygonPoints([]);
+    setIsDrawingPolygon(false);
+    setShowPolygonNameDialog(false);
+    setNewPolygonName("");
+    
+    if (onPolygonCreated) {
+      onPolygonCreated(null);
+    }
+    
+    toast({
+      title: "Drawing cancelled",
+      description: "Polygon creation has been cancelled",
+    });
+  }, [onPolygonCreated]);
+
+  const handlePolygonClick = useCallback((polygonId: string) => {
+    setSelectedPolygon(polygonId);
   }, []);
+
+  const handleEditPolygon = useCallback(() => {
+    if (!selectedPolygon) return;
+    setEditingPolygon(selectedPolygon);
+    const polygon = polygons.find(p => p.id === selectedPolygon);
+    if (polygon) {
+      setNewPolygonName(polygon.name);
+      setShowPolygonNameDialog(true);
+    }
+  }, [selectedPolygon, polygons]);
+
+  const updatePolygonName = useCallback(() => {
+    if (!editingPolygon || !newPolygonName) return;
+    
+    setPolygons(prev => prev.map(p => 
+      p.id === editingPolygon ? { ...p, name: newPolygonName } : p
+    ));
+    
+    setNewPolygonName("");
+    setShowPolygonNameDialog(false);
+    setEditingPolygon(null);
+    
+    toast({
+      title: "Zone updated",
+      description: `The zone has been renamed to "${newPolygonName}"`,
+    });
+  }, [editingPolygon, newPolygonName]);
+
+  const handleDeletePolygon = useCallback(() => {
+    if (!selectedPolygon) return;
+    setShowDeleteDialog(true);
+  }, [selectedPolygon]);
+
+  const confirmDeletePolygon = useCallback(() => {
+    if (!selectedPolygon) return;
+    
+    const polygonToDelete = polygons.find(p => p.id === selectedPolygon);
+    
+    setPolygons(prev => prev.filter(p => p.id !== selectedPolygon));
+    setSelectedPolygon(null);
+    setShowDeleteDialog(false);
+    
+    toast({
+      title: "Zone deleted",
+      description: `"${polygonToDelete?.name}" has been removed from the map`,
+    });
+  }, [selectedPolygon, polygons]);
 
   const containerClass = isFullscreen 
     ? "fixed inset-0 p-0 z-10 bg-gray-50" 
@@ -307,6 +516,7 @@ export default function MapView({
         onMouseUp={handleViewDragEnd}
         onMouseLeave={handleViewDragEnd}
         onWheel={handleWheel}
+        onClick={handleMapClick}
       >
         {showBackgroundMap && !isGeneratingMap && (
           <div className="absolute inset-0 z-0">
@@ -404,6 +614,75 @@ export default function MapView({
               robotPositions={animatedPositions}
               onNodeSelect={handleNodeSelect}
             />
+            
+            {/* Render existing polygons */}
+            {polygons.map(polygon => (
+              <div key={polygon.id} 
+                onClick={() => handlePolygonClick(polygon.id)}
+                className={cn(
+                  "absolute top-0 left-0 cursor-pointer transition-all",
+                  selectedPolygon === polygon.id ? "ring-2 ring-primary ring-offset-2" : ""
+                )}
+              >
+                <svg 
+                  width="800" 
+                  height="600" 
+                  viewBox="0 0 800 600" 
+                  style={{ position: 'absolute', top: 0, left: 0 }}
+                >
+                  <polygon 
+                    points={polygon.points.map(p => `${p.x},${p.y}`).join(' ')} 
+                    fill={polygon.color}
+                    stroke={selectedPolygon === polygon.id ? "#3b82f6" : "#888"}
+                    strokeWidth={selectedPolygon === polygon.id ? "2" : "1"}
+                    strokeDasharray={selectedPolygon === polygon.id ? "none" : "none"}
+                  />
+                </svg>
+                
+                {showLabels && (
+                  <div 
+                    className={cn(
+                      "absolute px-2 py-1 text-xs font-medium bg-white rounded shadow-sm border",
+                      selectedPolygon === polygon.id ? "bg-primary text-white" : "bg-white text-gray-800"
+                    )}
+                    style={{ 
+                      left: polygon.points.reduce((sum, p) => sum + p.x, 0) / polygon.points.length, 
+                      top: polygon.points.reduce((sum, p) => sum + p.y, 0) / polygon.points.length,
+                      transform: 'translate(-50%, -50%)'
+                    }}
+                  >
+                    {polygon.name}
+                  </div>
+                )}
+              </div>
+            ))}
+            
+            {/* Render polygon being drawn */}
+            {isDrawingPolygon && currentPolygonPoints.length > 0 && (
+              <svg 
+                width="800" 
+                height="600" 
+                viewBox="0 0 800 600" 
+                style={{ position: 'absolute', top: 0, left: 0 }}
+              >
+                <polyline 
+                  points={currentPolygonPoints.map(p => `${p.x},${p.y}`).join(' ')} 
+                  fill="none"
+                  stroke="#3b82f6"
+                  strokeWidth="2"
+                  strokeDasharray="5,5"
+                />
+                {currentPolygonPoints.map((point, index) => (
+                  <circle 
+                    key={index}
+                    cx={point.x}
+                    cy={point.y}
+                    r="4"
+                    fill="#3b82f6"
+                  />
+                ))}
+              </svg>
+            )}
           </div>
         )}
 
@@ -514,6 +793,53 @@ export default function MapView({
         </div>
       </div>
       
+      {editMode && isDrawingPolygon && currentPolygonPoints.length >= 3 && (
+        <div className="absolute bottom-5 left-1/2 transform -translate-x-1/2 bg-white rounded-md shadow-md p-2 flex space-x-2">
+          <Button 
+            size="sm" 
+            className="flex items-center"
+            onClick={completePolygon}
+          >
+            <Check className="mr-2 h-4 w-4" />
+            Complete Zone
+          </Button>
+          
+          <Button 
+            variant="destructive" 
+            size="sm" 
+            className="flex items-center"
+            onClick={cancelPolygonCreation}
+          >
+            <X className="mr-2 h-4 w-4" />
+            Cancel
+          </Button>
+        </div>
+      )}
+      
+      {selectedPolygon && !editMode && (
+        <div className="absolute bottom-5 left-1/2 transform -translate-x-1/2 bg-white rounded-md shadow-md p-2 flex space-x-2">
+          <Button 
+            size="sm" 
+            variant="outline"
+            className="flex items-center"
+            onClick={handleEditPolygon}
+          >
+            <Edit className="mr-2 h-4 w-4" />
+            Rename
+          </Button>
+          
+          <Button 
+            variant="destructive" 
+            size="sm" 
+            className="flex items-center"
+            onClick={handleDeletePolygon}
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            Delete
+          </Button>
+        </div>
+      )}
+      
       <div className="absolute bottom-5 right-5 bg-white rounded-md shadow-sm px-3 py-2 text-xs border border-gray-100">
         <div className="flex items-center mb-2">
           <div className="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
@@ -536,6 +862,10 @@ export default function MapView({
         <div className="flex items-center">
           <div className="border-2 w-6 border-blue-400 mr-2"></div>
           <span>Preferred Path</span>
+        </div>
+        <div className="flex items-center mt-2">
+          <div className="w-6 h-3 bg-blue-200 opacity-70 mr-2"></div>
+          <span>Zone</span>
         </div>
       </div>
       
@@ -660,6 +990,80 @@ export default function MapView({
         </DialogContent>
       </Dialog>
       
+      <Dialog open={showPolygonNameDialog} onOpenChange={setShowPolygonNameDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editingPolygon ? "Rename Zone" : "Name Your Zone"}</DialogTitle>
+            <DialogDescription>
+              {editingPolygon ? "Enter a new name for this zone" : "Give your new area a descriptive name"}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <Label htmlFor="zone-name">Zone Name</Label>
+            <Input
+              id="zone-name"
+              value={newPolygonName}
+              onChange={(e) => setNewPolygonName(e.target.value)}
+              placeholder="e.g., Loading Zone, Storage Area, Cabin 1"
+              className="mt-2"
+              autoFocus
+            />
+            
+            {!editingPolygon && (
+              <div className="mt-4 p-3 bg-blue-50 rounded-md text-blue-800 text-sm">
+                <p>This zone contains {currentPolygonPoints.length} points.</p>
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setShowPolygonNameDialog(false);
+                setNewPolygonName("");
+                setEditingPolygon(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={editingPolygon ? updatePolygonName : saveNewPolygon}
+              disabled={!newPolygonName.trim()}
+            >
+              {editingPolygon ? "Update" : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Zone</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this zone? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowDeleteDialog(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={confirmDeletePolygon}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
       {isFullscreen && (
         <div className="absolute top-16 left-0 right-0 flex justify-center">
           <div className="bg-white px-4 py-2 rounded-full shadow-md border border-gray-200">
@@ -684,6 +1088,13 @@ export default function MapView({
             <Save size={16} className="mr-2" />
             Save Map
           </Button>
+        </div>
+      )}
+      
+      {editMode && (
+        <div className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-white px-4 py-2 rounded-md shadow-md border border-blue-200 text-blue-800">
+          <p className="text-sm font-medium">Drawing Mode Active</p>
+          <p className="text-xs mt-1">Click on the map to add points to your polygon</p>
         </div>
       )}
     </motion.div>
